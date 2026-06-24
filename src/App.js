@@ -393,6 +393,7 @@ export default function HouseHelper() {
 
   // UI state
   const [generating, setGenerating]   = useState(false);
+  const [lastError, setLastError]     = useState("");
   const [streamingGreet, setStreamingGreet] = useState(false);
   const [swapping, setSwapping]       = useState(null);
   const [addingMeal, setAddingMeal]   = useState(false);
@@ -514,7 +515,8 @@ Rules:
       );
     } catch (e) {
       const msg = e?.message || String(e);
-      showToast(`Error: ${msg.slice(0, 80)}`);
+      setLastError(msg);
+      showToast("Generation failed — see error below");
       console.error("Generation error:", e);
     }
     setStreamingGreet(false);
@@ -749,6 +751,15 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
                 : <div style={{color:"var(--ink-faint)",fontSize:14}}>Generate a plan below — I'll pick 3 meals from your Recipe Box and build a task list and shopping list automatically.</div>
               }
             </div>
+
+            {/* Error display */}
+            {lastError && (
+              <div style={{background:"#fce8e8",border:"1px solid #f0c0c0",borderRadius:"var(--radius-md)",padding:"12px 16px",marginBottom:16,fontSize:13,color:"#8b0000",lineHeight:1.6}}>
+                <div style={{fontWeight:500,marginBottom:4}}>⚠ Error details (please copy and share):</div>
+                <div style={{fontFamily:"monospace",fontSize:12,wordBreak:"break-all"}}>{lastError}</div>
+                <button onClick={() => setLastError("")} style={{marginTop:8,fontSize:11,background:"none",border:"1px solid #f0c0c0",borderRadius:4,padding:"3px 8px",cursor:"pointer",color:"#8b0000"}}>Dismiss</button>
+              </div>
+            )}
 
             {/* Generate button */}
             <button className="btn-generate" onClick={generatePlan} disabled={generating}>
