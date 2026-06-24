@@ -1,0 +1,1228 @@
+import { useState, useEffect } from "react";
+ 
+// ─── Default data ─────────────────────────────────────────────────────────────
+const DEFAULT_PROFILE = {
+  housekeeperName: "Yuri",
+  housekeeperDays: ["Monday", "Thursday"],
+  familyMembers: "Husband, two college-age boys home for summer",
+  dietaryNotes: "No shellfish. Boys love hearty portions. Husband prefers lighter dinners.",
+  standardTasks: "Full laundry, vacuum all rooms, mop kitchen and bathroom floors, clean bathrooms, wipe counters",
+  extraNotes: "Boys tend to leave dishes in their rooms. Summer means more outdoor entertaining.",
+};
+ 
+const DEFAULT_RECIPES = [
+  { id: "r1", name: "Lemon Herb Roasted Chicken", category: "Poultry", cookTime: "1 hr 15 min", notes: "Family favorite. Serve with roasted potatoes.", ingredients: "whole chicken, lemons, rosemary, thyme, garlic, olive oil, potatoes, green beans" },
+  { id: "r2", name: "Pasta Bolognese", category: "Pasta", cookTime: "1 hr", notes: "Boys love this. Make a double batch.", ingredients: "ground beef, crushed tomatoes, onion, carrots, celery, red wine, spaghetti, parmesan" },
+  { id: "r3", name: "BBQ Pulled Pork", category: "Pork", cookTime: "8 hrs slow cooker", notes: "Start early morning. Serve with coleslaw and buns.", ingredients: "pork shoulder, BBQ sauce, brown sugar, apple cider vinegar, garlic powder, onion powder, buns, coleslaw mix" },
+  { id: "r4", name: "Sheet Pan Salmon", category: "Fish", cookTime: "20 min", notes: "Great lighter option. Good for Thursdays.", ingredients: "salmon fillets, asparagus, lemon, olive oil, dill, garlic, capers" },
+  { id: "r5", name: "Chicken Tacos", category: "Mexican", cookTime: "25 min", notes: "Casual and crowd-pleasing. Set out all toppings.", ingredients: "chicken thighs, taco seasoning, tortillas, avocado, salsa, shredded cheese, sour cream, lime, cilantro" },
+  { id: "r6", name: "Beef Stir Fry", category: "Asian", cookTime: "20 min", notes: "Quick weeknight option. Serve over rice.", ingredients: "flank steak, broccoli, bell peppers, snap peas, soy sauce, ginger, garlic, sesame oil, rice" },
+  { id: "r7", name: "Chicken Soup", category: "Soup", cookTime: "1 hr 30 min", notes: "Great for making ahead. Freezes beautifully.", ingredients: "whole chicken, carrots, celery, onion, garlic, chicken broth, egg noodles, parsley, bay leaves" },
+];
+ 
+const DEFAULT_TEMPLATES = [
+  { id: "t1", name: "Deep Clean Monday", tasks: ["Full laundry — all bedrooms including boys", "Vacuum all rooms including stairs", "Mop kitchen and bathroom floors", "Scrub all bathrooms thoroughly", "Wipe down all kitchen counters and appliances", "Prep and store ingredients for 3 meals"] },
+  { id: "t2", name: "Light Thursday", tasks: ["Touch-up vacuum main living areas", "Clean all bathrooms", "Restock paper goods and soap dispensers", "Fold and put away any remaining laundry", "Wipe kitchen counters and stovetop"] },
+  { id: "t3", name: "Summer Extras", tasks: ["Wipe down patio furniture", "Clean ceiling fans throughout house", "Wipe sliding glass doors inside and out", "Sweep and hose down patio"] },
+];
+ 
+const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const CATEGORIES = ["Poultry","Beef","Pork","Fish","Pasta","Mexican","Asian","Soup","Salad","Vegetarian","Other"];
+ 
+// ─── Storage ──────────────────────────────────────────────────────────────────
+function load(key, fallback) {
+  try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; } catch { return fallback; }
+}
+function save(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
+ 
+// ─── AI helpers ───────────────────────────────────────────────────────────────
+async function callClaude(system, user, onChunk) {
+  const res = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1500,
+      system,
+      messages: [{ role: "user", content: user }]
+    })
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`API ${res.status}: ${errText.slice(0,200)}`);
+  }
+  const data = await res.json();
+  const text = data.content.map(b => b.text || "").join("");
+  if (onChunk) onChunk(text);
+  return text;
+}
+ 
+async function callClaudeJSON(system, user) {
+  const res = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1500,
+      system,
+      messages: [{ role: "user", content: user }]
+    })
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`API ${res.status}: ${errText.slice(0,200)}`);
+  }
+  const data = await res.json();
+  let text = data.content.map(b => b.text || "").join("");
+  return JSON.parse(text.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim());
+}
+ 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap');
+ 
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+  :root {
+    --teal-dark:   #1e6e69;
+    --teal-mid:    #2a9d8f;
+    --teal-light:  #7fcdb9;
+    --teal-pale:   #e8f7f3;
+    --teal-faint:  #f4faf9;
+    --cream:       #fefcf9;
+    --ink:         #1a2e2b;
+    --ink-mid:     #3d5a56;
+    --ink-soft:    #6b8f8a;
+    --ink-faint:   #a8c5c0;
+    --border:      #d4ece7;
+    --border-soft: #e8f5f2;
+    --gold:        #e9c46a;
+    --gold-light:  #fdf3d7;
+    --red-soft:    #fce8e8;
+    --red:         #c0392b;
+    --radius-sm:   6px;
+    --radius-md:   10px;
+    --radius-lg:   14px;
+    --shadow-sm:   0 1px 4px rgba(30,110,105,0.08);
+    --shadow-md:   0 4px 16px rgba(30,110,105,0.12);
+  }
+ 
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--teal-faint);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+ 
+  /* ── Layout ── */
+  .app { max-width: 780px; margin: 0 auto; padding-bottom: 60px; }
+ 
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, var(--teal-dark) 0%, var(--teal-mid) 100%);
+    padding: 22px 32px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 3px solid var(--gold);
+    box-shadow: var(--shadow-md);
+  }
+  .header-brand h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    font-weight: 500;
+    color: #fff;
+    letter-spacing: -0.02em;
+  }
+  .header-brand p {
+    font-size: 11px;
+    color: var(--teal-light);
+    margin-top: 2px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .header-actions { display: flex; gap: 8px; }
+ 
+  /* ── Buttons ── */
+  .btn { font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.15s; border-radius: var(--radius-sm); font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-ghost { background: transparent; border: 1px solid rgba(255,255,255,0.25); color: #fff; padding: 7px 13px; }
+  .btn-ghost:hover { background: rgba(255,255,255,0.12); }
+  .btn-gold { background: var(--gold); border: none; color: var(--ink); padding: 7px 14px; font-weight: 500; }
+  .btn-gold:hover { background: #d4af55; }
+  .btn-teal { background: var(--teal-dark); border: none; color: #fff; padding: 8px 16px; font-weight: 500; }
+  .btn-teal:hover { background: var(--teal-mid); }
+  .btn-outline { background: #fff; border: 1px solid var(--border); color: var(--ink-mid); padding: 7px 13px; }
+  .btn-outline:hover { border-color: var(--teal-mid); color: var(--ink); }
+  .btn-danger { background: transparent; border: 1px solid #f0d0d0; color: var(--red); padding: 7px 13px; }
+  .btn-danger:hover { background: var(--red-soft); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-full { width: 100%; justify-content: center; padding: 13px; font-size: 14px; }
+  .btn-generate {
+    width: 100%;
+    background: linear-gradient(135deg, var(--teal-dark) 0%, var(--teal-mid) 100%);
+    border: none;
+    color: #fff;
+    padding: 14px;
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    transition: all 0.2s;
+    box-shadow: var(--shadow-sm);
+  }
+  .btn-generate:hover { opacity: 0.92; box-shadow: var(--shadow-md); }
+  .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; }
+ 
+  /* ── Nav ── */
+  .nav { display: flex; background: #fff; border-bottom: 1px solid var(--border); padding: 0 32px; }
+  .nav-btn { font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 13px 16px; border: none; background: transparent; color: var(--ink-soft); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; white-space: nowrap; }
+  .nav-btn.active { color: var(--teal-dark); border-bottom-color: var(--teal-mid); font-weight: 500; }
+  .nav-btn:hover:not(.active) { color: var(--ink); }
+ 
+  /* ── Content ── */
+  .content { padding: 24px 32px 0; }
+ 
+  /* ── Visit tabs ── */
+  .visit-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .visit-tabs { display: flex; gap: 6px; }
+  .vtab { font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 7px 18px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--ink-soft); cursor: pointer; transition: all 0.15s; }
+  .vtab.active { background: var(--teal-dark); color: #fff; border-color: var(--teal-dark); }
+  .vtab:hover:not(.active) { border-color: var(--teal-mid); color: var(--ink); }
+ 
+  /* ── Greeting ── */
+  .greeting {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--teal-mid);
+    border-radius: var(--radius-md);
+    padding: 13px 16px;
+    margin-bottom: 18px;
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--ink-mid);
+    min-height: 50px;
+  }
+  .greeting-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--teal-mid); font-weight: 500; margin-bottom: 4px; }
+  .streaming::after { content: '|'; animation: blink 0.8s step-end infinite; color: var(--teal-mid); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+ 
+  /* ── Cards ── */
+  .card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .section { margin-bottom: 20px; }
+  .section-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+  .section-title { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 500; color: var(--ink); display: flex; align-items: center; gap: 7px; }
+  .section-sub { font-size: 11px; color: var(--ink-faint); }
+ 
+  /* ── Tasks ── */
+  .task-toolbar { display: flex; gap: 7px; margin-bottom: 9px; flex-wrap: wrap; }
+  .task-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border-soft); transition: background 0.1s; }
+  .task-row:last-child { border-bottom: none; }
+  .task-row:hover { background: var(--teal-faint); }
+  .task-check { width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid var(--teal-light); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; background: transparent; }
+  .task-check.done { background: var(--teal-mid); border-color: var(--teal-mid); }
+  .task-text { font-size: 14px; color: var(--ink); flex: 1; line-height: 1.4; }
+  .task-text.done { text-decoration: line-through; color: var(--ink-faint); }
+  .tag-select { font-family: 'DM Sans', sans-serif; font-size: 11px; border: 1px solid var(--border); border-radius: 4px; padding: 2px 5px; color: var(--ink-soft); background: #fff; cursor: pointer; outline: none; }
+  .task-del { background: none; border: none; cursor: pointer; color: var(--ink-faint); font-size: 16px; padding: 0 3px; transition: color 0.15s; flex-shrink: 0; }
+  .task-del:hover { color: var(--red); }
+  .add-row { padding: 9px 14px; display: flex; align-items: center; gap: 9px; border-top: 1px dashed var(--border); }
+  .add-input { flex: 1; border: none; background: transparent; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); outline: none; }
+  .add-input::placeholder { color: var(--ink-faint); }
+  .add-btn { background: none; border: none; cursor: pointer; color: var(--teal-mid); font-size: 22px; line-height: 1; padding: 0; transition: color 0.15s; }
+  .add-btn:hover { color: var(--teal-dark); }
+ 
+  /* ── Meals ── */
+  .meal-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 13px 15px; display: flex; align-items: flex-start; gap: 13px; margin-bottom: 10px; transition: box-shadow 0.15s; }
+  .meal-card:hover { box-shadow: var(--shadow-sm); }
+  .meal-day { background: var(--teal-dark); color: #fff; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 12px; flex-shrink: 0; font-family: 'DM Sans', sans-serif; letter-spacing: 0.04em; margin-top: 1px; }
+  .meal-body { flex: 1; }
+  .meal-name { font-size: 14px; font-weight: 500; color: var(--ink); margin-bottom: 2px; }
+  .meal-notes { font-size: 12px; color: var(--ink-soft); line-height: 1.4; }
+  .meal-cat { font-size: 10px; color: var(--teal-mid); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+  .swap-btn { font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 5px 11px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: transparent; color: var(--ink-soft); cursor: pointer; transition: all 0.15s; flex-shrink: 0; }
+  .swap-btn:hover { border-color: var(--teal-mid); color: var(--ink); }
+  .swap-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+ 
+  /* ── Shopping ── */
+  .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; padding: 14px 16px; }
+  .shop-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; color: var(--ink-mid); border-bottom: 0.5px solid var(--border-soft); cursor: pointer; transition: color 0.12s; }
+  .shop-item:nth-last-child(-n+2) { border-bottom: none; }
+  .shop-item.checked { text-decoration: line-through; color: var(--ink-faint); }
+  .shop-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal-mid); flex-shrink: 0; transition: background 0.12s; }
+  .shop-item.checked .shop-dot { background: var(--ink-faint); }
+ 
+  /* ── Recipe box ── */
+  .recipe-toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .search-input { flex: 1; min-width: 140px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); background: #fff; outline: none; }
+  .search-input:focus { border-color: var(--teal-mid); }
+  .filter-sel { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); background: #fff; outline: none; cursor: pointer; }
+  .recipes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 11px; }
+  .recipe-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 13px; cursor: default; transition: border-color 0.15s, box-shadow 0.15s; }
+  .recipe-card:hover { border-color: var(--teal-light); box-shadow: var(--shadow-sm); }
+  .recipe-cat { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--teal-mid); font-weight: 500; margin-bottom: 4px; }
+  .recipe-name { font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 500; color: var(--ink); margin-bottom: 4px; line-height: 1.3; }
+  .recipe-meta { font-size: 11px; color: var(--ink-faint); margin-bottom: 5px; }
+  .recipe-notes { font-size: 12px; color: var(--ink-soft); line-height: 1.4; margin-bottom: 6px; }
+  .recipe-ing { font-size: 11px; color: var(--ink-faint); line-height: 1.4; }
+  .recipe-actions { display: flex; gap: 5px; margin-top: 9px; }
+  .recipe-btn { font-family: 'DM Sans', sans-serif; font-size: 11px; padding: 4px 9px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--ink-soft); cursor: pointer; transition: all 0.15s; }
+  .recipe-btn:hover { border-color: var(--teal-mid); color: var(--ink); }
+  .recipe-btn.del:hover { border-color: var(--red); color: var(--red); }
+  .add-recipe-card { background: #fff; border: 1px dashed var(--teal-light); border-radius: var(--radius-md); padding: 13px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 130px; gap: 6px; transition: all 0.15s; }
+  .add-recipe-card:hover { background: var(--teal-pale); border-color: var(--teal-mid); }
+  .add-recipe-card span:first-child { font-size: 26px; color: var(--teal-mid); }
+  .add-recipe-card span:last-child { font-size: 13px; color: var(--teal-mid); font-weight: 500; }
+ 
+  /* ── Modals ── */
+  .overlay { position: fixed; inset: 0; background: rgba(26,46,43,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .panel { background: var(--cream); border-radius: var(--radius-lg); width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; padding: 26px; box-shadow: var(--shadow-md); }
+  .panel h2 { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 500; color: var(--ink); margin-bottom: 18px; }
+  .panel-section { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--teal-mid); font-weight: 500; margin: 16px 0 9px; border-top: 1px solid var(--border); padding-top: 14px; }
+  .panel-section:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); font-weight: 500; margin-bottom: 4px; }
+  .field input, .field textarea, .field select { width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 11px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); background: #fff; outline: none; transition: border-color 0.15s; resize: vertical; }
+  .field input:focus, .field textarea:focus { border-color: var(--teal-mid); }
+  .field-hint { font-size: 11px; color: var(--ink-faint); margin-top: 3px; line-height: 1.4; }
+  .field-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .panel-actions { display: flex; gap: 9px; margin-top: 18px; }
+  .panel-save { flex: 1; background: var(--gold); border: none; border-radius: var(--radius-sm); padding: 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: var(--ink); cursor: pointer; transition: all 0.15s; }
+  .panel-save:hover { background: #d4af55; }
+  .panel-cancel { flex: 1; background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink-soft); cursor: pointer; transition: all 0.15s; }
+  .panel-cancel:hover { border-color: var(--ink-soft); }
+ 
+  /* ── Import tabs ── */
+  .import-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .itab { font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 8px 13px; border: none; background: transparent; color: var(--ink-soft); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+  .itab.active { color: var(--teal-dark); border-bottom-color: var(--teal-mid); font-weight: 500; }
+  .itab:hover:not(.active) { color: var(--ink); }
+  .drop-zone { border: 2px dashed var(--border); border-radius: var(--radius-md); padding: 28px 18px; text-align: center; cursor: pointer; transition: all 0.2s; background: #fff; }
+  .drop-zone:hover { border-color: var(--teal-mid); background: var(--teal-pale); }
+  .drop-zone input[type=file] { display: none; }
+  .import-result { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .import-result.selected { border-color: var(--teal-mid); border-width: 2px; }
+  .import-sel-btn { font-family: 'DM Sans', sans-serif; font-size: 11px; padding: 4px 9px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--ink-soft); cursor: pointer; flex-shrink: 0; transition: all 0.15s; }
+  .import-sel-btn.on { border-color: var(--teal-mid); color: var(--teal-dark); background: var(--teal-pale); }
+ 
+  /* ── Task panel tabs ── */
+  .tmpl-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 13px; margin-bottom: 8px; }
+  .tmpl-name { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 4px; }
+  .tmpl-preview { font-size: 11px; color: var(--ink-soft); line-height: 1.5; }
+ 
+  /* ── Print sheet ── */
+  .print-panel { background: #fff; border-radius: var(--radius-lg); width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; padding: 34px; box-shadow: var(--shadow-md); }
+  .print-hd { border-bottom: 2px solid var(--ink); padding-bottom: 12px; margin-bottom: 20px; }
+  .print-hd h2 { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 600; color: var(--ink); }
+  .print-hd p { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+  .print-section { margin-bottom: 20px; }
+  .print-section h3 { font-family: 'Playfair Display', serif; font-size: 14px; color: var(--ink); border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 9px; }
+  .print-task { font-size: 13px; color: var(--ink); padding: 4px 0; display: flex; gap: 9px; }
+  .print-task::before { content: "☐"; color: var(--teal-mid); flex-shrink: 0; }
+  .print-meal { font-size: 13px; padding: 5px 0; display: flex; gap: 10px; border-bottom: 0.5px solid var(--border-soft); }
+  .print-meal:last-child { border-bottom: none; }
+  .print-meal-day { color: var(--teal-dark); font-weight: 500; min-width: 34px; flex-shrink: 0; }
+  .print-shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 18px; }
+  .print-shop-item { font-size: 13px; color: var(--ink); padding: 4px 0; display: flex; gap: 8px; align-items: center; }
+  .print-shop-item::before { content: "○"; color: var(--teal-mid); font-size: 10px; }
+ 
+  /* ── Spinner ── */
+  .spinner { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  .spinner-teal { border-color: rgba(42,157,143,0.25); border-top-color: var(--teal-mid); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+ 
+  /* ── Toast ── */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--teal-dark); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; z-index: 200; animation: toastIn 0.2s ease; box-shadow: var(--shadow-md); }
+  @keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(8px); } }
+ 
+  /* ── Misc ── */
+  .empty { text-align: center; padding: 36px 20px; color: var(--ink-faint); }
+  .empty span { display: block; font-size: 30px; margin-bottom: 9px; }
+  .hint { font-size: 12px; color: var(--ink-soft); line-height: 1.55; margin-bottom: 12px; }
+ 
+  @media (max-width: 600px) {
+    .header { padding: 16px 18px; }
+    .header-brand h1 { font-size: 20px; }
+    .nav { padding: 0 18px; overflow-x: auto; }
+    .content { padding: 16px 18px 0; }
+    .shop-grid { grid-template-columns: 1fr; }
+    .recipes-grid { grid-template-columns: 1fr; }
+    .field-2col { grid-template-columns: 1fr; }
+    .print-shop-grid { grid-template-columns: 1fr; }
+  }
+`;
+ 
+// ═══════════════════════════════════════════════════════════════════════════════
+export default function HouseHelper() {
+  const today = new Date();
+  const todayName = DAYS[today.getDay()];
+ 
+  // ── Core state ─────────────────────────────────────────────────────────────
+  const [profile, setProfile]   = useState(() => load("hh_profile", DEFAULT_PROFILE));
+  const [recipes, setRecipes]   = useState(() => load("hh_recipes", DEFAULT_RECIPES));
+  const [templates, setTemplates] = useState(() => load("hh_templates", DEFAULT_TEMPLATES));
+  const [activeTab, setActiveTab] = useState("planner");
+  const [activeDay, setActiveDay] = useState(() => (load("hh_profile", DEFAULT_PROFILE).housekeeperDays || ["Monday"])[0]);
+ 
+  // Plan state
+  const [tasks, setTasks]       = useState(() => load(`hh_tasks_${(load("hh_profile", DEFAULT_PROFILE).housekeeperDays || ["Monday"])[0]}`, []));
+  const [meals, setMeals]       = useState(() => load(`hh_meals_${(load("hh_profile", DEFAULT_PROFILE).housekeeperDays || ["Monday"])[0]}`, []));
+  const [shopping, setShopping] = useState(() => load(`hh_shop_${(load("hh_profile", DEFAULT_PROFILE).housekeeperDays || ["Monday"])[0]}`, []));
+  const [greeting, setGreeting] = useState(() => load(`hh_greet_${(load("hh_profile", DEFAULT_PROFILE).housekeeperDays || ["Monday"])[0]}`, ""));
+  const [checkedShop, setCheckedShop] = useState({});
+ 
+  // UI state
+  const [generating, setGenerating]   = useState(false);
+  const [streamingGreet, setStreamingGreet] = useState(false);
+  const [swapping, setSwapping]       = useState(null);
+  const [addingMeal, setAddingMeal]   = useState(false);
+  const [refreshingShop, setRefreshingShop] = useState(false);
+  const [newTask, setNewTask]         = useState("");
+  const [toast, setToast]             = useState("");
+ 
+  // Panel state
+  const [showSettings, setShowSettings]     = useState(false);
+  const [showTaskPanel, setShowTaskPanel]   = useState(false);
+  const [taskPanelTab, setTaskPanelTab]     = useState("bulk");
+  const [showRecipeForm, setShowRecipeForm] = useState(false);
+  const [showImport, setShowImport]         = useState(false);
+  const [showPrint, setShowPrint]           = useState(false);
+  const [editingRecipe, setEditingRecipe]   = useState(null);
+ 
+  // Task panel
+  const [bulkText, setBulkText]         = useState("");
+  const [aiPrompt, setAiPrompt]         = useState("");
+  const [aiTaskBusy, setAiTaskBusy]     = useState(false);
+  const [newTmplName, setNewTmplName]   = useState("");
+ 
+  // Recipe form
+  const [draftRecipe, setDraftRecipe] = useState({ name:"", category:"Poultry", cookTime:"", notes:"", ingredients:"" });
+ 
+  // Import
+  const [importTab, setImportTab]       = useState("name");
+  const [importBusy, setImportBusy]     = useState(false);
+  const [importResults, setImportResults] = useState([]);
+  const [selectedImports, setSelectedImports] = useState("all");
+  const [importPasteText, setImportPasteText] = useState("");
+  const [importNameText, setImportNameText]   = useState("");
+  const [importBulkText, setImportBulkText]   = useState("");
+  const [importPhoto, setImportPhoto]   = useState(null);
+ 
+  // Settings draft
+  const [draftProfile, setDraftProfile] = useState(profile);
+ 
+  // Recipe search
+  const [recipeSearch, setRecipeSearch] = useState("");
+  const [recipeFilter, setRecipeFilter] = useState("All");
+ 
+  // ── Persistence ────────────────────────────────────────────────────────────
+  useEffect(() => { save("hh_profile", profile); }, [profile]);
+  useEffect(() => { save("hh_recipes", recipes); }, [recipes]);
+  useEffect(() => { save("hh_templates", templates); }, [templates]);
+  useEffect(() => { save(`hh_tasks_${activeDay}`, tasks); }, [tasks, activeDay]);
+  useEffect(() => { save(`hh_meals_${activeDay}`, meals); }, [meals, activeDay]);
+  useEffect(() => { save(`hh_shop_${activeDay}`, shopping); }, [shopping, activeDay]);
+  useEffect(() => { save(`hh_greet_${activeDay}`, greeting); }, [greeting, activeDay]);
+ 
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2600); };
+ 
+  // ── Switch visit day ────────────────────────────────────────────────────────
+  const switchDay = (day) => {
+    setActiveDay(day);
+    setTasks(load(`hh_tasks_${day}`, []));
+    setMeals(load(`hh_meals_${day}`, []));
+    setShopping(load(`hh_shop_${day}`, []));
+    setGreeting(load(`hh_greet_${day}`, ""));
+    setCheckedShop({});
+  };
+ 
+  // ── Recipe context for AI ───────────────────────────────────────────────────
+  const recipeContext = () => recipes.length
+    ? recipes.map(r => `"${r.name}" (${r.category}, cook: ${r.cookTime}) — ${r.notes}. Ingredients: ${r.ingredients}`).join("\n")
+    : "No saved recipes yet.";
+ 
+  const mealHistory = meals.length ? meals.map(m => m.name).join(", ") : "";
+ 
+  // ── Generate full plan ──────────────────────────────────────────────────────
+  const generatePlan = async () => {
+    setGenerating(true);
+    setGreeting("");
+    setStreamingGreet(true);
+    setCheckedShop({});
+    try {
+      const result = await callClaudeJSON(
+        "You are a household management assistant. Return ONLY valid JSON, no markdown.",
+        `Generate a complete housekeeper visit plan for ${activeDay}.
+ 
+Household: ${profile.familyMembers}
+Housekeeper: ${profile.housekeeperName}
+Today: ${todayName}
+Standard tasks: ${profile.standardTasks}
+Extra notes: ${profile.extraNotes}
+Dietary notes: ${profile.dietaryNotes}
+ 
+RECIPE BOX (choose 3 meals from this list to prepare):
+${recipeContext()}
+ 
+Return this exact JSON:
+{
+  "tasks": [
+    { "id": "1", "text": "task description", "tag": "routine", "done": false }
+  ],
+  "meals": [
+    { "id": "1", "day": "Tue", "name": "recipe name exactly as in box", "category": "category", "notes": "brief prep note for housekeeper" }
+  ],
+  "shopping": ["ingredient 1 with quantity", "ingredient 2 with quantity"]
+}
+ 
+Rules:
+- 5-7 tasks. ${activeDay === "Monday" ? "Monday = full clean + laundry + meal prep." : "Thursday = lighter touch-up, bathrooms, restock."}
+- Tag tasks: routine | priority | seasonal
+- Choose exactly 3 meals from the Recipe Box. Vary by category.
+- Shopping list: 10-14 specific ingredients with rough quantities for all 3 meals combined.
+- Assign meals to realistic weekdays (Tue-Fri).`
+      );
+ 
+      setTasks(result.tasks || []);
+      setMeals(result.meals || []);
+      setShopping(result.shopping || []);
+ 
+      await callClaude(
+        "You are a warm household assistant. Write a 2-sentence friendly greeting for the homemaker about their upcoming housekeeper visit. Be specific, mention one meal by name. Conversational, not formal.",
+        `Housekeeper: ${profile.housekeeperName}. Visit: ${activeDay}. Meals planned: ${(result.meals||[]).map(m=>m.name).join(", ")}.`,
+        (partial) => setGreeting(partial)
+      );
+    } catch (e) {
+      const msg = e?.message || String(e);
+      showToast(`Error: ${msg.slice(0, 80)}`);
+      console.error("Generation error:", e);
+    }
+    setStreamingGreet(false);
+    setGenerating(false);
+  };
+ 
+  // ── Task actions ────────────────────────────────────────────────────────────
+  const toggleTask  = (id) => setTasks(ts => ts.map(t => t.id===id ? {...t,done:!t.done} : t));
+  const deleteTask  = (id) => setTasks(ts => ts.filter(t => t.id!==id));
+  const changeTag   = (id, tag) => setTasks(ts => ts.map(t => t.id===id ? {...t,tag} : t));
+  const addTask = () => {
+    if (!newTask.trim()) return;
+    setTasks(ts => [...ts, { id: Date.now().toString(), text: newTask.trim(), tag:"routine", done:false }]);
+    setNewTask("");
+  };
+  const addBulkTasks = () => {
+    const lines = bulkText.split("\n").map(l=>l.trim()).filter(Boolean);
+    if (!lines.length) return;
+    setTasks(ts => [...ts, ...lines.map(text => ({ id: Date.now().toString()+Math.random(), text, tag:"routine", done:false }))]);
+    setBulkText("");
+    showToast(`${lines.length} task${lines.length>1?"s":""} added ✓`);
+    setShowTaskPanel(false);
+  };
+  const suggestTasks = async () => {
+    if (!aiPrompt.trim()) return;
+    setAiTaskBusy(true);
+    try {
+      const result = await callClaudeJSON(
+        "You are a household task assistant. Return ONLY JSON, no markdown.",
+        `Suggest tasks for: "${aiPrompt}". Household: ${profile.familyMembers}. Visit: ${activeDay}. Existing tasks: ${tasks.map(t=>t.text).join(", ")||"none"}. Return: { "tasks": [{ "text": "...", "tag": "routine|priority|seasonal" }] } — 2-5 tasks, no repeats.`
+      );
+      setTasks(ts => [...ts, ...(result.tasks||[]).map(t => ({ id:Date.now().toString()+Math.random(), text:t.text, tag:t.tag||"routine", done:false }))]);
+      showToast(`${(result.tasks||[]).length} tasks added ✓`);
+      setAiPrompt("");
+      setShowTaskPanel(false);
+    } catch { showToast("Could not generate tasks — try again"); }
+    setAiTaskBusy(false);
+  };
+  const loadTemplate = (tmpl) => {
+    const existing = tasks.map(t=>t.text.toLowerCase());
+    const toAdd = tmpl.tasks.filter(t=>!existing.includes(t.toLowerCase())).map(text => ({ id:Date.now().toString()+Math.random(), text, tag:"routine", done:false }));
+    setTasks(ts => [...ts, ...toAdd]);
+    showToast(`Loaded "${tmpl.name}" — ${toAdd.length} tasks added ✓`);
+    setShowTaskPanel(false);
+  };
+  const saveAsTemplate = () => {
+    if (!newTmplName.trim()) { showToast("Enter a name first"); return; }
+    if (!tasks.length) { showToast("No tasks to save"); return; }
+    setTemplates(ts => [...ts, { id:Date.now().toString(), name:newTmplName.trim(), tasks:tasks.map(t=>t.text) }]);
+    setNewTmplName("");
+    showToast(`Template saved ✓`);
+  };
+ 
+  // ── Meal actions ────────────────────────────────────────────────────────────
+  const swapMeal = async (meal) => {
+    setSwapping(meal.id);
+    try {
+      const result = await callClaudeJSON(
+        "You are a meal suggestion assistant. Return ONLY JSON, no markdown.",
+        `Suggest ONE different meal to replace "${meal.name}" for ${meal.day}.
+Family: ${profile.familyMembers}. Dietary: ${profile.dietaryNotes}.
+Recipe box:\n${recipeContext()}
+Already planned: ${meals.map(m=>m.name).join(", ")}.
+Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
+      );
+      setMeals(ms => ms.map(m => m.id===meal.id ? {...m, name:result.name, category:result.category, notes:result.notes} : m));
+      showToast("Meal swapped ✓");
+    } catch { showToast("Swap failed — try again"); }
+    setSwapping(null);
+  };
+ 
+  const addMeal = async () => {
+    setAddingMeal(true);
+    try {
+      const usedDays = meals.map(m=>m.day);
+      const result = await callClaudeJSON(
+        "You are a meal suggestion assistant. Return ONLY JSON, no markdown.",
+        `Suggest ONE additional meal. ${profile.dietaryNotes}. Recipe box:\n${recipeContext()}. Already planned: ${meals.map(m=>m.name).join(", ")}. Days used: ${usedDays.join(", ")}. Return: { "day":"Mon/Tue/Wed/Thu/Fri/Sat", "name":"...", "category":"...", "notes":"..." }`
+      );
+      setMeals(ms => [...ms, { id:Date.now().toString(), day:result.day, name:result.name, category:result.category, notes:result.notes }]);
+    } catch { showToast("Could not add meal — try again"); }
+    setAddingMeal(false);
+  };
+ 
+  const refreshShopping = async () => {
+    if (!meals.length) return;
+    setRefreshingShop(true);
+    try {
+      const result = await callClaudeJSON(
+        "You are a grocery list assistant. Return ONLY JSON, no markdown.",
+        `Shopping list for: ${meals.map(m=>m.name).join(", ")}. Family: ${profile.familyMembers}. Return: { "shopping":["item with quantity",...] } — 10-14 items.`
+      );
+      setShopping(result.shopping||[]);
+      setCheckedShop({});
+      showToast("Shopping list refreshed ✓");
+    } catch { showToast("Could not refresh — try again"); }
+    setRefreshingShop(false);
+  };
+ 
+  // ── Recipe CRUD ─────────────────────────────────────────────────────────────
+  const openNewRecipe = () => {
+    setDraftRecipe({ name:"", category:"Poultry", cookTime:"", notes:"", ingredients:"" });
+    setEditingRecipe(null);
+    setShowRecipeForm(true);
+  };
+  const openEditRecipe = (r) => {
+    setDraftRecipe({...r});
+    setEditingRecipe(r.id);
+    setShowRecipeForm(true);
+  };
+  const saveRecipe = () => {
+    if (!draftRecipe.name.trim()) { showToast("Please enter a recipe name"); return; }
+    if (editingRecipe) {
+      setRecipes(rs => rs.map(r => r.id===editingRecipe ? {...draftRecipe, id:editingRecipe} : r));
+      showToast("Recipe updated ✓");
+    } else {
+      setRecipes(rs => [...rs, {...draftRecipe, id:Date.now().toString()}]);
+      showToast("Recipe added ✓");
+    }
+    setShowRecipeForm(false);
+  };
+  const deleteRecipe = (id) => { setRecipes(rs => rs.filter(r=>r.id!==id)); showToast("Recipe removed"); };
+ 
+  const filteredRecipes = recipes.filter(r => {
+    const q = recipeSearch.toLowerCase();
+    return (r.name.toLowerCase().includes(q) || r.notes.toLowerCase().includes(q)) &&
+           (recipeFilter==="All" || r.category===recipeFilter);
+  });
+ 
+  // ── Recipe import ───────────────────────────────────────────────────────────
+  const IMPORT_SYS = "You are a recipe extraction assistant. Return ONLY valid JSON arrays, no markdown.";
+  const IMPORT_PROMPT_SUFFIX = `Return a JSON array: [{ "name":"...", "category":"Poultry|Beef|Pork|Fish|Pasta|Mexican|Asian|Soup|Salad|Vegetarian|Other", "cookTime":"...", "notes":"brief family-friendly note", "ingredients":"comma-separated main ingredients" }]`;
+ 
+  const parseImport = async (contentBlocks) => {
+    setImportBusy(true);
+    setImportResults([]);
+    setSelectedImports("all");
+    try {
+      const response = await fetch("/api/chat", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514",
+          max_tokens:1500,
+          system: IMPORT_SYS,
+          messages:[{ role:"user", content:[...contentBlocks, { type:"text", text: IMPORT_PROMPT_SUFFIX }] }]
+        })
+      });
+      const data = await response.json();
+      let text = data.content.map(b=>b.text||"").join("");
+      text = text.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
+      const list = JSON.parse(text);
+      setImportResults(list.map((r,i) => ({ id:`imp_${i}_${Date.now()}`, name:r.name||"Untitled", category:r.category||"Other", cookTime:r.cookTime||"", notes:r.notes||"", ingredients:r.ingredients||"" })));
+    } catch { showToast("Could not read recipe — try again"); }
+    setImportBusy(false);
+  };
+ 
+  const handlePhotoImport = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImportPhoto(e.target.result);
+      const base64 = e.target.result.split(",")[1];
+      parseImport([{ type:"image", source:{ type:"base64", media_type:file.type||"image/jpeg", data:base64 } }]);
+    };
+    reader.readAsDataURL(file);
+  };
+ 
+  const isSelected = (id) => selectedImports==="all" || !!selectedImports[id];
+  const toggleImportSelect = (id) => {
+    if (selectedImports==="all") {
+      const obj = {};
+      importResults.forEach(r => { obj[r.id] = r.id!==id; });
+      setSelectedImports(obj);
+    } else {
+      setSelectedImports(s => ({...s, [id]:!s[id]}));
+    }
+  };
+  const addImportedRecipes = () => {
+    const toAdd = importResults.filter(r => isSelected(r.id));
+    if (!toAdd.length) { showToast("Select at least one recipe"); return; }
+    setRecipes(rs => [...rs, ...toAdd.map(r => ({...r, id:Date.now().toString()+Math.random()}))]);
+    showToast(`${toAdd.length} recipe${toAdd.length>1?"s":""} added ✓`);
+    setShowImport(false);
+    setImportResults([]);
+    setImportPasteText(""); setImportNameText(""); setImportBulkText(""); setImportPhoto(null);
+  };
+ 
+  // ── Render ──────────────────────────────────────────────────────────────────
+  return (
+    <>
+      <style>{STYLES}</style>
+      <div className="app">
+ 
+        {/* Header */}
+        <div className="header">
+          <div className="header-brand">
+            <h1>House Helper</h1>
+            <p>Housekeeper Prep Assistant</p>
+          </div>
+          <div className="header-actions">
+            <button className="btn btn-ghost" onClick={() => { setDraftProfile({...profile}); setShowSettings(true); }}>⚙ Profile</button>
+            <button className="btn btn-gold" onClick={() => setShowPrint(true)} disabled={!tasks.length && !meals.length}>Print Sheet</button>
+          </div>
+        </div>
+ 
+        {/* Nav */}
+        <div className="nav">
+          <button className={`nav-btn ${activeTab==="planner"?"active":""}`} onClick={() => setActiveTab("planner")}>📋 Visit Planner</button>
+          <button className={`nav-btn ${activeTab==="recipes"?"active":""}`} onClick={() => setActiveTab("recipes")}>🍽 Recipe Box ({recipes.length})</button>
+          <button className={`nav-btn ${activeTab==="preferences"?"active":""}`} onClick={() => setActiveTab("preferences")}>❤️ Preferences</button>
+        </div>
+ 
+        {/* ═══════════════════════ PLANNER TAB ═══════════════════════ */}
+        {activeTab === "planner" && (
+          <div className="content">
+            {/* Visit day tabs */}
+            <div className="visit-bar">
+              <div className="visit-tabs">
+                {(profile.housekeeperDays||["Monday"]).map(day => (
+                  <button key={day} className={`vtab ${activeDay===day?"active":""}`} onClick={() => switchDay(day)}>{day}</button>
+                ))}
+              </div>
+              <span style={{fontSize:12,color:"var(--ink-faint)"}}>Today is {todayName}</span>
+            </div>
+ 
+            {/* Greeting */}
+            <div className="greeting">
+              <div className="greeting-label">✦ Assistant</div>
+              {greeting
+                ? <div className={streamingGreet?"streaming":""}>{greeting}</div>
+                : <div style={{color:"var(--ink-faint)",fontSize:14}}>Generate a plan below — I'll pick 3 meals from your Recipe Box and build a task list and shopping list automatically.</div>
+              }
+            </div>
+ 
+            {/* Generate button */}
+            <button className="btn-generate" onClick={generatePlan} disabled={generating}>
+              {generating ? <><div className="spinner"/>Generating {activeDay} plan…</> : `✦ Generate ${activeDay} Plan`}
+            </button>
+ 
+            {/* Quick-start when no tasks */}
+            {!tasks.length && !generating && (
+              <div style={{marginBottom:18}}>
+                <div style={{fontSize:13,color:"var(--ink-soft)",marginBottom:10}}>Or start the task list yourself:</div>
+                <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+                  <button className="btn btn-outline" onClick={() => { setShowTaskPanel(true); setTaskPanelTab("templates"); }}>📁 Load a template</button>
+                  <button className="btn btn-outline" onClick={() => { setShowTaskPanel(true); setTaskPanelTab("bulk"); }}>📋 Paste a list</button>
+                  <button className="btn btn-outline" onClick={() => { setShowTaskPanel(true); setTaskPanelTab("ai"); }}>✦ AI suggest</button>
+                </div>
+              </div>
+            )}
+ 
+            {/* Tasks */}
+            {tasks.length > 0 && (
+              <div className="section">
+                <div className="section-hd">
+                  <div className="section-title">🧹 Tasks for {profile.housekeeperName}</div>
+                  <span className="section-sub">{tasks.filter(t=>t.done).length}/{tasks.length} done</span>
+                </div>
+                <div style={{display:"flex",gap:7,marginBottom:9,flexWrap:"wrap"}}>
+                  <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setShowTaskPanel(true); setTaskPanelTab("bulk"); }}>+ Add list</button>
+                  <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setShowTaskPanel(true); setTaskPanelTab("ai"); }}>✦ AI suggest</button>
+                  <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setShowTaskPanel(true); setTaskPanelTab("templates"); }}>📁 Templates</button>
+                  <button className="btn btn-danger" style={{fontSize:12,padding:"5px 11px",marginLeft:"auto"}} onClick={() => { if(window.confirm("Clear all tasks?")) setTasks([]); }}>Clear all</button>
+                </div>
+                <div className="card">
+                  {tasks.map(task => (
+                    <div className="task-row" key={task.id}>
+                      <div className={`task-check ${task.done?"done":""}`} onClick={() => toggleTask(task.id)}>
+                        {task.done && <span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}
+                      </div>
+                      <span className={`task-text ${task.done?"done":""}`}>{task.text}</span>
+                      <select className="tag-select" value={task.tag} onChange={e => changeTag(task.id, e.target.value)}>
+                        <option value="routine">routine</option>
+                        <option value="priority">priority</option>
+                        <option value="seasonal">seasonal</option>
+                      </select>
+                      <button className="task-del" onClick={() => deleteTask(task.id)}>×</button>
+                    </div>
+                  ))}
+                  <div className="add-row">
+                    <input className="add-input" placeholder="Type a task and press Enter…" value={newTask}
+                      onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key==="Enter" && addTask()} />
+                    <button className="add-btn" onClick={addTask}>+</button>
+                  </div>
+                </div>
+              </div>
+            )}
+ 
+            {/* Meals */}
+            {meals.length > 0 && (
+              <div className="section">
+                <div className="section-hd">
+                  <div className="section-title">🍽 Meals to Prepare</div>
+                </div>
+                {meals.map(meal => (
+                  <div className="meal-card" key={meal.id}>
+                    <span className="meal-day">{meal.day}</span>
+                    <div className="meal-body">
+                      <div className="meal-cat">{meal.category}</div>
+                      <div className="meal-name">{meal.name}</div>
+                      {meal.notes && <div className="meal-notes">{meal.notes}</div>}
+                    </div>
+                    <button className="swap-btn" onClick={() => swapMeal(meal)} disabled={swapping===meal.id}>
+                      {swapping===meal.id ? "…" : "Swap"}
+                    </button>
+                  </div>
+                ))}
+                <button
+                  className="btn btn-outline btn-full"
+                  style={{marginTop:4,borderStyle:"dashed",color:"var(--teal-mid)",borderColor:"var(--teal-light)"}}
+                  onClick={addMeal}
+                  disabled={addingMeal}
+                >{addingMeal ? "Suggesting…" : "+ Suggest another meal"}</button>
+              </div>
+            )}
+ 
+            {/* Shopping */}
+            {shopping.length > 0 && (
+              <div className="section">
+                <div className="section-hd">
+                  <div className="section-title">🛒 Shopping List</div>
+                  <button className="btn btn-outline" style={{fontSize:12,padding:"4px 10px"}} onClick={refreshShopping} disabled={refreshingShop}>
+                    {refreshingShop ? "Refreshing…" : "↺ Refresh"}
+                  </button>
+                </div>
+                <div className="card">
+                  <div className="shop-grid">
+                    {shopping.map((item,i) => (
+                      <div key={i} className={`shop-item ${checkedShop[i]?"checked":""}`} onClick={() => setCheckedShop(c=>({...c,[i]:!c[i]}))}>
+                        <span className="shop-dot"/>
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+ 
+            {/* Action bar */}
+            {(tasks.length > 0 || meals.length > 0) && (
+              <div style={{display:"flex",gap:9,marginTop:20,paddingTop:18,borderTop:"1px solid var(--border)"}}>
+                <button className="btn btn-danger" style={{flex:1}} onClick={() => { if(window.confirm("Clear the entire plan?")){ setTasks([]); setMeals([]); setShopping([]); setGreeting(""); setCheckedShop({}); } }}>
+                  🗑 Clear Plan
+                </button>
+                <button className="btn btn-teal" style={{flex:2}} onClick={() => setShowPrint(true)}>
+                  📋 Preview & Print
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+ 
+        {/* ═══════════════════════ RECIPE BOX TAB ═══════════════════════ */}
+        {activeTab === "recipes" && (
+          <div className="content">
+            <p className="hint">Save your family's favorite meals here. When you generate a plan, the AI picks 3 meals from this list and builds the shopping list automatically.</p>
+            <div className="recipe-toolbar">
+              <input className="search-input" placeholder="Search recipes…" value={recipeSearch} onChange={e => setRecipeSearch(e.target.value)} />
+              <select className="filter-sel" value={recipeFilter} onChange={e => setRecipeFilter(e.target.value)}>
+                <option value="All">All categories</option>
+                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              </select>
+              <button className="btn btn-gold" onClick={() => { setShowImport(true); setImportResults([]); setImportPhoto(null); setImportPasteText(""); setImportNameText(""); setImportBulkText(""); }}>
+                + Import
+              </button>
+            </div>
+            <div className="recipes-grid">
+              {filteredRecipes.map(r => (
+                <div className="recipe-card" key={r.id}>
+                  <div className="recipe-cat">{r.category}</div>
+                  <div className="recipe-name">{r.name}</div>
+                  {r.cookTime && <div className="recipe-meta">Cook time: {r.cookTime}</div>}
+                  {r.notes && <div className="recipe-notes">{r.notes}</div>}
+                  {r.ingredients && <div className="recipe-ing">Ingredients: {r.ingredients}</div>}
+                  <div className="recipe-actions">
+                    <button className="recipe-btn" onClick={() => openEditRecipe(r)}>Edit</button>
+                    <button className="recipe-btn del" onClick={() => deleteRecipe(r.id)}>Remove</button>
+                  </div>
+                </div>
+              ))}
+              <div className="add-recipe-card" onClick={openNewRecipe}>
+                <span>+</span>
+                <span>Add a recipe</span>
+              </div>
+            </div>
+            {filteredRecipes.length===0 && recipes.length>0 && (
+              <div className="empty"><span>🔍</span>No recipes match your search.</div>
+            )}
+          </div>
+        )}
+ 
+        {/* ═══════════════════════ PREFERENCES TAB ═══════════════════════ */}
+        {activeTab === "preferences" && (
+          <div className="content">
+            <p className="hint">Your food preferences are sent to the AI every time it suggests meals or generates a plan. The more detail you add, the better the suggestions.</p>
+            <PreferencesPanel profile={profile} setProfile={setProfile} showToast={showToast} />
+          </div>
+        )}
+      </div>
+ 
+      {/* ═══ SETTINGS PANEL ═══ */}
+      {showSettings && (
+        <div className="overlay" onClick={e => e.target===e.currentTarget && setShowSettings(false)}>
+          <div className="panel">
+            <h2>Household Profile</h2>
+            <div className="panel-section">Household</div>
+            <div className="field">
+              <label>Housekeeper's Name</label>
+              <input value={draftProfile.housekeeperName} onChange={e => setDraftProfile(p=>({...p,housekeeperName:e.target.value}))} />
+            </div>
+            <div className="field">
+              <label>Family Members</label>
+              <input value={draftProfile.familyMembers} onChange={e => setDraftProfile(p=>({...p,familyMembers:e.target.value}))} />
+            </div>
+            <div className="field">
+              <label>Visit Days (comma separated)</label>
+              <input value={(draftProfile.housekeeperDays||[]).join(", ")} onChange={e => setDraftProfile(p=>({...p,housekeeperDays:e.target.value.split(",").map(d=>d.trim()).filter(Boolean)}))} />
+            </div>
+            <div className="panel-section">Tasks</div>
+            <div className="field">
+              <label>Standard Tasks (baseline for every visit)</label>
+              <textarea rows={3} value={draftProfile.standardTasks} onChange={e => setDraftProfile(p=>({...p,standardTasks:e.target.value}))} />
+            </div>
+            <div className="field">
+              <label>Extra Notes</label>
+              <textarea rows={2} value={draftProfile.extraNotes} onChange={e => setDraftProfile(p=>({...p,extraNotes:e.target.value}))} />
+              <div className="field-hint">Seasonal reminders, recurring situations, anything worth noting</div>
+            </div>
+            <div className="panel-actions">
+              <button className="panel-cancel" onClick={() => setShowSettings(false)}>Cancel</button>
+              <button className="panel-save" onClick={() => { setProfile(draftProfile); setShowSettings(false); showToast("Profile saved ✓"); }}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+ 
+      {/* ═══ TASK PANEL ═══ */}
+      {showTaskPanel && (
+        <div className="overlay" onClick={e => e.target===e.currentTarget && setShowTaskPanel(false)}>
+          <div className="panel">
+            <h2>Add Tasks</h2>
+            <div className="import-tabs">
+              {[["bulk","📋 Paste a List"],["ai","✦ AI Suggest"],["templates","📁 Templates"]].map(([k,label]) => (
+                <button key={k} className={`itab ${taskPanelTab===k?"active":""}`} onClick={() => setTaskPanelTab(k)}>{label}</button>
+              ))}
+            </div>
+ 
+            {taskPanelTab==="bulk" && (
+              <div>
+                <p className="hint">One task per line. All will be added at once. Great for pasting from your Notes app.</p>
+                <textarea style={{width:"100%",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",padding:"9px 11px",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"var(--ink)",background:"#fff",outline:"none",resize:"vertical",minHeight:110,marginBottom:8}}
+                  placeholder={"One task per line:\n\nClean all bathrooms\nWash boys' laundry\nVacuum upstairs\nWipe patio furniture"}
+                  value={bulkText} onChange={e => setBulkText(e.target.value)} />
+                {bulkText.trim() && <div style={{fontSize:12,color:"var(--teal-mid)",marginBottom:8,fontWeight:500}}>{bulkText.trim().split("\n").filter(l=>l.trim()).length} tasks to add</div>}
+                <div className="panel-actions">
+                  <button className="panel-cancel" onClick={() => setShowTaskPanel(false)}>Cancel</button>
+                  <button className="panel-save" onClick={addBulkTasks} disabled={!bulkText.trim()}>Add to List</button>
+                </div>
+              </div>
+            )}
+ 
+            {taskPanelTab==="ai" && (
+              <div>
+                <p className="hint">Describe a situation and the AI adds relevant tasks — it already knows what's on your list and won't repeat anything.</p>
+                <input style={{width:"100%",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",padding:"9px 11px",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"var(--ink)",background:"#fff",outline:"none",marginBottom:8}}
+                  placeholder="e.g. The boys are having friends over Friday, or It needs a deep clean…"
+                  value={aiPrompt} onChange={e => setAiPrompt(e.target.value)}
+                  onKeyDown={e => e.key==="Enter" && suggestTasks()} />
+                <div className="panel-actions">
+                  <button className="panel-cancel" onClick={() => setShowTaskPanel(false)}>Cancel</button>
+                  <button className="panel-save" onClick={suggestTasks} disabled={aiTaskBusy||!aiPrompt.trim()}>
+                    {aiTaskBusy ? "Thinking…" : "Suggest Tasks"}
+                  </button>
+                </div>
+              </div>
+            )}
+ 
+            {taskPanelTab==="templates" && (
+              <div>
+                <p className="hint">Load a saved checklist in one click, or save your current task list as a new template.</p>
+                {templates.map(tmpl => (
+                  <div className="tmpl-card" key={tmpl.id}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+                      <span className="tmpl-name">{tmpl.name}</span>
+                      <div style={{display:"flex",gap:5}}>
+                        <button className="recipe-btn" onClick={() => loadTemplate(tmpl)}>Load</button>
+                        <button className="recipe-btn del" onClick={() => { setTemplates(ts=>ts.filter(t=>t.id!==tmpl.id)); showToast("Template removed"); }}>Remove</button>
+                      </div>
+                    </div>
+                    <div className="tmpl-preview">{tmpl.tasks.slice(0,3).join(" · ")}{tmpl.tasks.length>3?` · +${tmpl.tasks.length-3} more`:""}</div>
+                  </div>
+                ))}
+                <div style={{borderTop:"1px dashed var(--border)",paddingTop:13,marginTop:8}}>
+                  <div style={{fontSize:12,color:"var(--ink-soft)",marginBottom:7,fontWeight:500}}>Save current task list as a template:</div>
+                  <div style={{display:"flex",gap:7}}>
+                    <input style={{flex:1,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",padding:"8px 10px",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"var(--ink)",background:"#fff",outline:"none"}}
+                      placeholder="Template name, e.g. Deep Clean Monday"
+                      value={newTmplName} onChange={e => setNewTmplName(e.target.value)}
+                      onKeyDown={e => e.key==="Enter" && saveAsTemplate()} />
+                    <button className="panel-save" style={{flex:"0 0 auto",padding:"8px 14px"}} onClick={saveAsTemplate}>Save</button>
+                  </div>
+                  <div style={{fontSize:11,color:"var(--ink-faint)",marginTop:4}}>Saves all {tasks.length} tasks currently on the {activeDay} plan</div>
+                </div>
+                <div className="panel-actions" style={{marginTop:14}}>
+                  <button className="panel-cancel" onClick={() => setShowTaskPanel(false)}>Done</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+ 
+      {/* ═══ RECIPE FORM ═══ */}
+      {showRecipeForm && (
+        <div className="overlay" onClick={e => e.target===e.currentTarget && setShowRecipeForm(false)}>
+          <div className="panel">
+            <h2>{editingRecipe ? "Edit Recipe" : "Add a Recipe"}</h2>
+            <div className="field">
+              <label>Recipe Name</label>
+              <input placeholder="e.g. Mom's Pot Roast" value={draftRecipe.name} onChange={e => setDraftRecipe(r=>({...r,name:e.target.value}))} />
+            </div>
+            <div className="field-2col">
+              <div className="field">
+                <label>Category</label>
+                <select value={draftRecipe.category} onChange={e => setDraftRecipe(r=>({...r,category:e.target.value}))}>
+                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label>Cook Time</label>
+                <input placeholder="e.g. 1 hr" value={draftRecipe.cookTime} onChange={e => setDraftRecipe(r=>({...r,cookTime:e.target.value}))} />
+              </div>
+            </div>
+            <div className="field">
+              <label>Family Notes</label>
+              <textarea rows={2} placeholder="e.g. Boys love this. Double the recipe. Good for Sundays." value={draftRecipe.notes} onChange={e => setDraftRecipe(r=>({...r,notes:e.target.value}))} />
+              <div className="field-hint">Tips, preferences, or serving suggestions for Yuri</div>
+            </div>
+            <div className="field">
+              <label>Main Ingredients</label>
+              <textarea rows={2} placeholder="e.g. Chicken thighs, garlic, lemon, rosemary, potatoes, olive oil" value={draftRecipe.ingredients} onChange={e => setDraftRecipe(r=>({...r,ingredients:e.target.value}))} />
+              <div className="field-hint">Used to build the shopping list — separate with commas</div>
+            </div>
+            <div className="panel-actions">
+              <button className="panel-cancel" onClick={() => setShowRecipeForm(false)}>Cancel</button>
+              <button className="panel-save" onClick={saveRecipe}>{editingRecipe?"Save Changes":"Add Recipe"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+ 
+      {/* ═══ IMPORT MODAL ═══ */}
+      {showImport && (
+        <div className="overlay" onClick={e => e.target===e.currentTarget && setShowImport(false)}>
+          <div className="panel" style={{maxWidth:540}}>
+            <h2>Import Recipes</h2>
+            <div className="import-tabs">
+              {[["name","✏️ By Name"],["paste","📋 Paste Text"],["photo","📷 From Photo"],["bulk","📦 Bulk List"]].map(([k,label]) => (
+                <button key={k} className={`itab ${importTab===k?"active":""}`} onClick={() => { setImportTab(k); setImportResults([]); }}>{label}</button>
+              ))}
+            </div>
+ 
+            {importTab==="name" && (
+              <div>
+                <p className="hint">Type a recipe name and the AI fills in the details — category, ingredients, cook time, and notes.</p>
+                <input style={{width:"100%",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",padding:"9px 11px",fontFamily:"'DM Sans',sans-serif",fontSize:14,color:"var(--ink)",background:"#fff",outline:"none"}}
+                  placeholder="e.g. Mom's Chicken Soup, Beef Tacos, Shrimp Scampi…"
+                  value={importNameText} onChange={e => setImportNameText(e.target.value)}
+                  onKeyDown={e => e.key==="Enter" && parseImport([{type:"text",text:`Recipe name: "${importNameText}". Generate details for this one recipe.`}])} />
+                <button className="panel-save" style={{width:"100%",marginTop:10}} disabled={importBusy||!importNameText.trim()}
+                  onClick={() => parseImport([{type:"text",text:`Recipe name: "${importNameText}". Generate details for this one recipe.`}])}>
+                  {importBusy ? "Looking up…" : "Fill In Recipe Details"}
+                </button>
+              </div>
+            )}
+ 
+            {importTab==="paste" && (
+              <div>
+                <p className="hint">Copy a recipe from any website, email, or document and paste it below. Works with one recipe or several at once.</p>
+                <textarea style={{width:"100%",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",padding:"9px 11px",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"var(--ink)",background:"#fff",outline:"none",resize:"vertical",minHeight:120,marginBottom:8}}
+                  placeholder="Paste recipe text here…" value={importPasteText} onChange={e => setImportPasteText(e.target.value)} />
+                <button className="panel-save" style={{width:"100%"}} disabled={importBusy||!importPasteText.trim()}
+                  onClick={() => parseImport([{type:"text",text:`Extract recipes from this text:\n${importPasteText}`}])}>
+                  {importBusy ? "Reading…" : "Extract Recipe"}
+                </button>
+              </div>
+            )}
+ 
+            {importTab==="photo" && (
+              <div>
+                <p className="hint">Take a photo of a recipe card or cookbook page. The AI reads it and fills everything in.</p>
+                <label>
+                  <div className="drop-zone" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();handlePhotoImport(e.dataTransfer.files[0]);}}>
+                    {importPhoto
+                      ? <img src={importPhoto} alt="recipe" style={{maxWidth:"100%",maxHeight:160,borderRadius:6,objectFit:"contain"}} />
+                      : <><div style={{fontSize:32,marginBottom:8}}>📷</div><div style={{fontSize:14,fontWeight:500,color:"var(--ink)",marginBottom:3}}>Tap to choose a photo</div><div style={{fontSize:12,color:"var(--ink-faint)"}}>JPG, PNG, or HEIC</div></>
+                    }
+                    <input type="file" accept="image/*" onChange={e => handlePhotoImport(e.target.files[0])} />
+                  </div>
+                </label>
+                {importBusy && <div style={{textAlign:"center",padding:"12px 0",color:"var(--ink-soft)",fontSize:13}}>Reading image…</div>}
+              </div>
+            )}
+ 
+            {importTab==="bulk" && (
+              <div>
+                <p className="hint">One recipe name per line — the AI generates details for all of them at once.</p>
+                <textarea style={{width:"100%",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",padding:"9px 11px",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"var(--ink)",background:"#fff",outline:"none",resize:"vertical",minHeight:120,marginBottom:8}}
+                  placeholder={"One name per line:\n\nLemon Herb Chicken\nPasta Bolognese\nBBQ Ribs\nVegetable Stir Fry"} value={importBulkText} onChange={e => setImportBulkText(e.target.value)} />
+                {importBulkText.trim() && <div style={{fontSize:12,color:"var(--teal-mid)",marginBottom:8,fontWeight:500}}>{importBulkText.trim().split("\n").filter(l=>l.trim()).length} recipes to import</div>}
+                <button className="panel-save" style={{width:"100%"}} disabled={importBusy||!importBulkText.trim()}
+                  onClick={() => parseImport([{type:"text",text:`Generate recipe details for each of these names, one object per recipe:\n${importBulkText}`}])}>
+                  {importBusy ? "Generating…" : "Generate All Details"}
+                </button>
+              </div>
+            )}
+ 
+            {/* Results */}
+            {importResults.length > 0 && (
+              <div style={{marginTop:16}}>
+                <div style={{fontSize:11,textTransform:"uppercase",letterSpacing:"0.06em",color:"var(--teal-mid)",fontWeight:500,marginBottom:8}}>
+                  {importResults.length} recipe{importResults.length>1?"s":""} found — select which to add:
+                </div>
+                {importResults.map(r => (
+                  <div key={r.id} className={`import-result ${isSelected(r.id)?"selected":""}`}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:500,color:"var(--ink)"}}>{r.name}</div>
+                      <div style={{fontSize:11,color:"var(--ink-faint)",marginTop:2}}>{r.category}{r.cookTime?` · ${r.cookTime}`:""}</div>
+                      {r.ingredients && <div style={{fontSize:11,color:"var(--ink-faint)",marginTop:2}}>{r.ingredients}</div>}
+                      {r.notes && <div style={{fontSize:12,color:"var(--ink-soft)",marginTop:3}}>{r.notes}</div>}
+                    </div>
+                    <button className={`import-sel-btn ${isSelected(r.id)?"on":""}`} onClick={() => toggleImportSelect(r.id)}>
+                      {isSelected(r.id)?"✓ Selected":"Select"}
+                    </button>
+                  </div>
+                ))}
+                <div className="panel-actions" style={{marginTop:12}}>
+                  <button className="panel-cancel" onClick={() => setShowImport(false)}>Cancel</button>
+                  <button className="panel-save" onClick={addImportedRecipes}>
+                    Add {importResults.filter(r=>isSelected(r.id)).length} to Recipe Box
+                  </button>
+                </div>
+              </div>
+            )}
+ 
+            {!importBusy && !importResults.length && (
+              <div className="panel-actions" style={{marginTop:16}}>
+                <button className="panel-cancel" onClick={() => setShowImport(false)}>Close</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+ 
+      {/* ═══ PRINT SHEET ═══ */}
+      {showPrint && (
+        <div className="overlay" onClick={e => e.target===e.currentTarget && setShowPrint(false)}>
+          <div className="print-panel">
+            <div className="print-hd">
+              <h2>Instructions for {profile.housekeeperName} — {activeDay}</h2>
+              <p>{today.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</p>
+            </div>
+            {tasks.length > 0 && (
+              <div className="print-section">
+                <h3>🧹 Tasks</h3>
+                {tasks.map(t => <div className="print-task" key={t.id}>{t.text}{t.tag!=="routine"?<span style={{fontSize:11,color:"var(--ink-faint)"}}> ({t.tag})</span>:""}</div>)}
+              </div>
+            )}
+            {meals.length > 0 && (
+              <div className="print-section">
+                <h3>🍽 Meals to Prepare</h3>
+                {meals.map(m => (
+                  <div className="print-meal" key={m.id}>
+                    <span className="print-meal-day">{m.day}</span>
+                    <span>{m.name}{m.notes?` — ${m.notes}`:""}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {shopping.length > 0 && (
+              <div className="print-section">
+                <h3>🛒 Shopping List</h3>
+                <div className="print-shop-grid">
+                  {shopping.map((item,i) => <div className="print-shop-item" key={i}>{item}</div>)}
+                </div>
+              </div>
+            )}
+            {greeting && <div style={{fontSize:12,color:"var(--ink-soft)",fontStyle:"italic",marginTop:10,borderTop:"1px solid var(--border)",paddingTop:10}}>{greeting}</div>}
+            <div style={{display:"flex",gap:9,marginTop:18,borderTop:"1px solid var(--border)",paddingTop:14}}>
+              <button className="panel-cancel" onClick={() => setShowPrint(false)}>Close</button>
+              <button className="panel-save" onClick={() => window.print()}>🖨 Print</button>
+            </div>
+          </div>
+        </div>
+      )}
+ 
+      {toast && <div className="toast">{toast}</div>}
+    </>
+  );
+}
+ 
+// ─── Preferences Panel ────────────────────────────────────────────────────────
+function PreferencesPanel({ profile, setProfile, showToast }) {
+  const [draft, setDraft] = useState({...profile});
+  const save = () => { setProfile(draft); showToast("Preferences saved ✓"); };
+  return (
+    <div className="card" style={{padding:"18px 20px"}}>
+      <div className="field">
+        <label>Foods the family loves</label>
+        <textarea rows={3} placeholder="e.g. Italian food, grilled meats, Mexican food, pasta, hearty stews, anything with cheese…" value={draft.dietaryNotes} onChange={e => setDraft(d=>({...d,dietaryNotes:e.target.value}))} />
+        <div className="field-hint">Cuisines, ingredients, cooking styles — the more specific the better</div>
+      </div>
+      <div className="field" style={{marginTop:12}}>
+        <label>Dietary rules and restrictions</label>
+        <textarea rows={3} placeholder="e.g. No shellfish. Boys eat large portions. Husband prefers lighter dinners on weekdays. No pork on Fridays…" value={draft.extraNotes} onChange={e => setDraft(d=>({...d,extraNotes:e.target.value}))} />
+        <div className="field-hint">Allergies, portion preferences, health considerations, religious restrictions</div>
+      </div>
+      <button className="btn btn-teal" style={{marginTop:14,padding:"10px 20px"}} onClick={save}>Save Preferences</button>
+    </div>
+  );
+}
+ 
+// CodeSandbox alias
+export { HouseHelper as App };
