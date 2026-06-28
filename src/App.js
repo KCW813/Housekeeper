@@ -78,9 +78,7 @@ async function callClaudeJSON(system, user) {
   if (data.error) throw new Error(`Anthropic error: ${JSON.stringify(data.error)}`);
   if (!data.content) throw new Error(`Unexpected response: ${JSON.stringify(data).slice(0,200)}`);
   let text = data.content.map(b => b.text || "").join("");
-  // Strip markdown code fences if present
   text = text.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
-  // Find the JSON object/array within the text
   const jsonStart = text.search(/[\[{]/);
   const jsonEnd = Math.max(text.lastIndexOf("}"), text.lastIndexOf("]"));
   if (jsonStart !== -1 && jsonEnd !== -1) {
@@ -135,36 +133,67 @@ const STYLES = `
 
   /* ── Header ── */
   .header {
-    background: linear-gradient(135deg, var(--teal-dark) 0%, var(--teal-mid) 100%);
-    padding: 22px 32px 20px;
+    background: linear-gradient(135deg, #122b28 0%, #1a5c57 38%, #228077 70%, #2c9e90 100%);
+    padding: 24px 32px 22px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 3px solid var(--gold);
-    box-shadow: var(--shadow-md);
+    border-bottom: none;
+    box-shadow: 0 6px 28px rgba(18,43,40,0.35);
+    position: relative;
+    overflow: hidden;
   }
+  /* Top-right golden glow */
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -55px; right: -35px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(233,196,106,0.22) 0%, transparent 68%);
+    pointer-events: none;
+  }
+  /* Bottom-left soft teal glow */
+  .header-glow {
+    position: absolute;
+    bottom: -45px; left: -20px;
+    width: 150px; height: 150px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(127,205,185,0.14) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  /* Gold gradient bar at bottom */
+  .header-gold-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #b8924a 0%, var(--gold) 30%, #f5e09e 55%, var(--gold) 75%, #b8924a 100%);
+    pointer-events: none;
+  }
+  .header-brand { position: relative; z-index: 1; }
   .header-brand h1 {
     font-family: 'Playfair Display', serif;
     font-size: 24px;
-    font-weight: 500;
+    font-weight: 600;
     color: #fff;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
+    text-shadow: 0 1px 8px rgba(0,0,0,0.2);
   }
   .header-brand p {
-    font-size: 11px;
-    color: var(--teal-light);
-    margin-top: 2px;
-    letter-spacing: 0.08em;
+    font-size: 10px;
+    color: rgba(127,205,185,0.9);
+    margin-top: 3px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
   }
-  .header-actions { display: flex; gap: 8px; }
+  .header-actions { display: flex; gap: 8px; position: relative; z-index: 1; }
 
   /* ── Buttons ── */
   .btn { font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.15s; border-radius: var(--radius-sm); font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
-  .btn-ghost { background: transparent; border: 1px solid rgba(255,255,255,0.25); color: #fff; padding: 7px 13px; }
-  .btn-ghost:hover { background: rgba(255,255,255,0.12); }
-  .btn-gold { background: var(--gold); border: none; color: var(--ink); padding: 7px 14px; font-weight: 500; }
-  .btn-gold:hover { background: #d4af55; }
+  .btn-ghost { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.22); color: #fff; padding: 7px 13px; backdrop-filter: blur(4px); }
+  .btn-ghost:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.35); }
+  .btn-gold { background: linear-gradient(135deg, #d4a843 0%, var(--gold) 50%, #f0d07a 100%); border: none; color: #1a2e2b; padding: 7px 14px; font-weight: 600; box-shadow: 0 2px 8px rgba(233,196,106,0.35); }
+  .btn-gold:hover { filter: brightness(1.08); box-shadow: 0 3px 12px rgba(233,196,106,0.45); }
   .btn-teal { background: var(--teal-dark); border: none; color: #fff; padding: 8px 16px; font-weight: 500; }
   .btn-teal:hover { background: var(--teal-mid); }
   .btn-outline { background: #fff; border: 1px solid var(--border); color: var(--ink-mid); padding: 7px 13px; }
@@ -175,10 +204,10 @@ const STYLES = `
   .btn-full { width: 100%; justify-content: center; padding: 13px; font-size: 14px; }
   .btn-generate {
     width: 100%;
-    background: linear-gradient(135deg, var(--teal-dark) 0%, var(--teal-mid) 100%);
+    background: linear-gradient(135deg, #122b28 0%, #1a5c57 45%, var(--teal-mid) 100%);
     border: none;
     color: #fff;
-    padding: 14px;
+    padding: 15px;
     font-family: 'Playfair Display', serif;
     font-size: 15px;
     border-radius: var(--radius-md);
@@ -189,16 +218,29 @@ const STYLES = `
     gap: 10px;
     margin-bottom: 20px;
     transition: all 0.2s;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 3px 14px rgba(18,43,40,0.28);
+    letter-spacing: 0.01em;
+    position: relative;
+    overflow: hidden;
   }
-  .btn-generate:hover { opacity: 0.92; box-shadow: var(--shadow-md); }
-  .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-generate::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -80%;
+    width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent);
+    transform: skewX(-15deg);
+    transition: left 0.5s ease;
+  }
+  .btn-generate:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(18,43,40,0.35); }
+  .btn-generate:hover::before { left: 130%; }
+  .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
   /* ── Nav ── */
-  .nav { display: flex; background: #fff; border-bottom: 1px solid var(--border); padding: 0 32px; }
-  .nav-btn { font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 13px 16px; border: none; background: transparent; color: var(--ink-soft); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; white-space: nowrap; }
-  .nav-btn.active { color: var(--teal-dark); border-bottom-color: var(--teal-mid); font-weight: 500; }
-  .nav-btn:hover:not(.active) { color: var(--ink); }
+  .nav { display: flex; background: #fff; border-bottom: 1px solid var(--border); padding: 0 32px; box-shadow: 0 1px 6px rgba(30,110,105,0.05); }
+  .nav-btn { font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 13px 16px; border: none; background: transparent; color: var(--ink-soft); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; white-space: nowrap; border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+  .nav-btn.active { color: var(--teal-dark); border-bottom-color: var(--teal-mid); font-weight: 500; background: var(--teal-faint); }
+  .nav-btn:hover:not(.active) { color: var(--ink); background: var(--teal-faint); }
 
   /* ── Content ── */
   .content { padding: 24px 32px 0; }
@@ -207,7 +249,7 @@ const STYLES = `
   .visit-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
   .visit-tabs { display: flex; gap: 6px; }
   .vtab { font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 7px 18px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--ink-soft); cursor: pointer; transition: all 0.15s; }
-  .vtab.active { background: var(--teal-dark); color: #fff; border-color: var(--teal-dark); }
+  .vtab.active { background: var(--teal-dark); color: #fff; border-color: var(--teal-dark); box-shadow: 0 2px 8px rgba(30,110,105,0.25); }
   .vtab:hover:not(.active) { border-color: var(--teal-mid); color: var(--ink); }
 
   /* ── Greeting ── */
@@ -222,13 +264,14 @@ const STYLES = `
     line-height: 1.65;
     color: var(--ink-mid);
     min-height: 50px;
+    box-shadow: var(--shadow-sm);
   }
   .greeting-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--teal-mid); font-weight: 500; margin-bottom: 4px; }
   .streaming::after { content: '|'; animation: blink 0.8s step-end infinite; color: var(--teal-mid); }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
   /* ── Cards ── */
-  .card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); }
   .section { margin-bottom: 20px; }
   .section-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
   .section-title { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 500; color: var(--ink); display: flex; align-items: center; gap: 7px; }
@@ -253,9 +296,9 @@ const STYLES = `
   .add-btn:hover { color: var(--teal-dark); }
 
   /* ── Meals ── */
-  .meal-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 13px 15px; display: flex; align-items: flex-start; gap: 13px; margin-bottom: 10px; transition: box-shadow 0.15s; }
-  .meal-card:hover { box-shadow: var(--shadow-sm); }
-  .meal-day { background: var(--teal-dark); color: #fff; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 12px; flex-shrink: 0; font-family: 'DM Sans', sans-serif; letter-spacing: 0.04em; margin-top: 1px; }
+  .meal-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 13px 15px; display: flex; align-items: flex-start; gap: 13px; margin-bottom: 10px; transition: box-shadow 0.15s; box-shadow: var(--shadow-sm); }
+  .meal-card:hover { box-shadow: var(--shadow-md); }
+  .meal-day { background: linear-gradient(135deg, #1a5c57, var(--teal-mid)); color: #fff; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 12px; flex-shrink: 0; font-family: 'DM Sans', sans-serif; letter-spacing: 0.04em; margin-top: 1px; box-shadow: 0 2px 6px rgba(30,110,105,0.2); }
   .meal-body { flex: 1; }
   .meal-name { font-size: 14px; font-weight: 500; color: var(--ink); margin-bottom: 2px; }
   .meal-notes { font-size: 12px; color: var(--ink-soft); line-height: 1.4; }
@@ -295,8 +338,8 @@ const STYLES = `
   .add-recipe-card span:last-child { font-size: 13px; color: var(--teal-mid); font-weight: 500; }
 
   /* ── Modals ── */
-  .overlay { position: fixed; inset: 0; background: rgba(26,46,43,0.5); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
-  .panel { background: var(--cream); border-radius: var(--radius-lg); width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; padding: 26px; box-shadow: var(--shadow-md); }
+  .overlay { position: fixed; inset: 0; background: rgba(26,46,43,0.55); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(2px); }
+  .panel { background: var(--cream); border-radius: var(--radius-lg); width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; padding: 26px; box-shadow: 0 8px 40px rgba(18,43,40,0.25); }
   .panel h2 { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 500; color: var(--ink); margin-bottom: 18px; }
   .panel-section { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--teal-mid); font-weight: 500; margin: 16px 0 9px; border-top: 1px solid var(--border); padding-top: 14px; }
   .panel-section:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
@@ -307,8 +350,8 @@ const STYLES = `
   .field-hint { font-size: 11px; color: var(--ink-faint); margin-top: 3px; line-height: 1.4; }
   .field-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .panel-actions { display: flex; gap: 9px; margin-top: 18px; }
-  .panel-save { flex: 1; background: var(--gold); border: none; border-radius: var(--radius-sm); padding: 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: var(--ink); cursor: pointer; transition: all 0.15s; }
-  .panel-save:hover { background: #d4af55; }
+  .panel-save { flex: 1; background: linear-gradient(135deg, #1a5c57, var(--teal-mid)); border: none; border-radius: var(--radius-sm); padding: 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: #fff; cursor: pointer; transition: all 0.15s; box-shadow: 0 2px 8px rgba(30,110,105,0.2); }
+  .panel-save:hover { filter: brightness(1.08); box-shadow: 0 3px 12px rgba(30,110,105,0.3); }
   .panel-cancel { flex: 1; background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink-soft); cursor: pointer; transition: all 0.15s; }
   .panel-cancel:hover { border-color: var(--ink-soft); }
 
@@ -325,13 +368,14 @@ const STYLES = `
   .import-sel-btn { font-family: 'DM Sans', sans-serif; font-size: 11px; padding: 4px 9px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--ink-soft); cursor: pointer; flex-shrink: 0; transition: all 0.15s; }
   .import-sel-btn.on { border-color: var(--teal-mid); color: var(--teal-dark); background: var(--teal-pale); }
 
-  /* ── Task panel tabs ── */
-  .tmpl-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 13px; margin-bottom: 8px; }
+  /* ── Template cards ── */
+  .tmpl-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 13px; margin-bottom: 8px; transition: border-color 0.15s, box-shadow 0.15s; }
+  .tmpl-card:hover { border-color: var(--teal-light); box-shadow: var(--shadow-sm); }
   .tmpl-name { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 4px; }
   .tmpl-preview { font-size: 11px; color: var(--ink-soft); line-height: 1.5; }
 
   /* ── Print sheet ── */
-  .print-panel { background: #fff; border-radius: var(--radius-lg); width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; padding: 34px; box-shadow: var(--shadow-md); }
+  .print-panel { background: #fff; border-radius: var(--radius-lg); width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; padding: 34px; box-shadow: 0 8px 40px rgba(18,43,40,0.25); }
   .print-hd { border-bottom: 2px solid var(--ink); padding-bottom: 12px; margin-bottom: 20px; }
   .print-hd h2 { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 600; color: var(--ink); }
   .print-hd p { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
@@ -345,6 +389,12 @@ const STYLES = `
   .print-shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 18px; }
   .print-shop-item { font-size: 13px; color: var(--ink); padding: 4px 0; display: flex; gap: 8px; align-items: center; }
   .print-shop-item::before { content: "○"; color: var(--teal-mid); font-size: 10px; }
+
+  /* ── PDF / Share button strip ── */
+  .pdf-strip { display: flex; gap: 9px; margin-top: 10px; }
+  .btn-share { flex: 1; background: linear-gradient(135deg, #122b28 0%, #1a5c57 50%, var(--teal-mid) 100%); border: none; border-radius: var(--radius-sm); padding: 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: #fff; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 7px; box-shadow: 0 2px 8px rgba(18,43,40,0.2); }
+  .btn-share:hover { filter: brightness(1.1); box-shadow: 0 4px 14px rgba(18,43,40,0.3); }
+  .btn-share:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* ── Spinner ── */
   .spinner { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
@@ -361,7 +411,7 @@ const STYLES = `
   .hint { font-size: 12px; color: var(--ink-soft); line-height: 1.55; margin-bottom: 12px; }
 
   @media (max-width: 600px) {
-    .header { padding: 16px 18px; }
+    .header { padding: 18px 18px 18px; }
     .header-brand h1 { font-size: 20px; }
     .nav { padding: 0 18px; overflow-x: auto; }
     .content { padding: 16px 18px 0; }
@@ -435,6 +485,16 @@ export default function HouseHelper() {
   // Recipe search
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeFilter, setRecipeFilter] = useState("All");
+
+  // ── NEW: Template editing state ────────────────────────────────────────────
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [editTmplName, setEditTmplName]       = useState("");
+  const [editTmplTasks, setEditTmplTasks]     = useState([]);
+  const [newEditTask, setNewEditTask]         = useState("");
+
+  // ── NEW: PDF/Share state ───────────────────────────────────────────────────
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const canNativeShare = typeof navigator !== "undefined" && !!navigator.share;
 
   // ── Persistence ────────────────────────────────────────────────────────────
   useEffect(() => { save("hh_profile", profile); }, [profile]);
@@ -537,7 +597,7 @@ Rules:
     if (!lines.length) return;
     setTasks(ts => [...ts, ...lines.map(text => ({ id: Date.now().toString()+Math.random(), text, tag:"routine", done:false }))]);
     setBulkText("");
-    showToast(`${lines.length} task${lines.length>1?"s":""} added ✓`);
+    showToast(`${lines.length} task${lines.length>1?"s":""} added`);
     setShowTaskPanel(false);
   };
   const suggestTasks = async () => {
@@ -549,7 +609,7 @@ Rules:
         `Suggest tasks for: "${aiPrompt}". Household: ${profile.familyMembers}. Visit: ${activeDay}. Existing tasks: ${tasks.map(t=>t.text).join(", ")||"none"}. Return: { "tasks": [{ "text": "...", "tag": "routine|priority|seasonal" }] } — 2-5 tasks, no repeats.`
       );
       setTasks(ts => [...ts, ...(result.tasks||[]).map(t => ({ id:Date.now().toString()+Math.random(), text:t.text, tag:t.tag||"routine", done:false }))]);
-      showToast(`${(result.tasks||[]).length} tasks added ✓`);
+      showToast(`${(result.tasks||[]).length} tasks added`);
       setAiPrompt("");
       setShowTaskPanel(false);
     } catch { showToast("Could not generate tasks — try again"); }
@@ -559,7 +619,7 @@ Rules:
     const existing = tasks.map(t=>t.text.toLowerCase());
     const toAdd = tmpl.tasks.filter(t=>!existing.includes(t.toLowerCase())).map(text => ({ id:Date.now().toString()+Math.random(), text, tag:"routine", done:false }));
     setTasks(ts => [...ts, ...toAdd]);
-    showToast(`Loaded "${tmpl.name}" — ${toAdd.length} tasks added ✓`);
+    showToast(`Loaded "${tmpl.name}" — ${toAdd.length} tasks added`);
     setShowTaskPanel(false);
   };
   const saveAsTemplate = () => {
@@ -567,7 +627,252 @@ Rules:
     if (!tasks.length) { showToast("No tasks to save"); return; }
     setTemplates(ts => [...ts, { id:Date.now().toString(), name:newTmplName.trim(), tasks:tasks.map(t=>t.text) }]);
     setNewTmplName("");
-    showToast(`Template saved ✓`);
+    showToast("Template saved");
+  };
+
+  // ── NEW: Template editing ───────────────────────────────────────────────────
+  const openEditTemplate = (tmpl) => {
+    setEditingTemplate(tmpl);
+    setEditTmplName(tmpl.name);
+    setEditTmplTasks([...tmpl.tasks]);
+    setNewEditTask("");
+  };
+  const saveEditedTemplate = () => {
+    if (!editTmplName.trim()) { showToast("Enter a template name"); return; }
+    setTemplates(ts => ts.map(t =>
+      t.id === editingTemplate.id ? { ...t, name: editTmplName.trim(), tasks: editTmplTasks } : t
+    ));
+    setEditingTemplate(null);
+    showToast("Template saved");
+  };
+  const addEditTask = () => {
+    if (!newEditTask.trim()) return;
+    setEditTmplTasks(ts => [...ts, newEditTask.trim()]);
+    setNewEditTask("");
+  };
+  const removeEditTask = (idx) => setEditTmplTasks(ts => ts.filter((_, i) => i !== idx));
+
+  // ── NEW: PDF generation + share/download ───────────────────────────────────
+  const generateAndSharePDF = async () => {
+    setGeneratingPdf(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "pt", format: "letter" });
+      const pageW = 612;
+      const margin = 50;
+      const contentW = pageW - margin * 2;
+
+      // ── Header block ──
+      // Dark teal background
+      doc.setFillColor(18, 43, 40);
+      doc.rect(0, 0, pageW, 88, "F");
+      // Lighter teal right-side gradient effect (approximated as a second rect)
+      doc.setFillColor(34, 128, 119);
+      doc.rect(pageW * 0.55, 0, pageW * 0.45, 88, "F");
+      // Subtle gold glow circle top-right
+      doc.setFillColor(233, 196, 106);
+      doc.setGState(new doc.GState({ opacity: 0.12 }));
+      doc.circle(pageW - 30, -10, 90, "F");
+      doc.setGState(new doc.GState({ opacity: 1 }));
+      // Gold accent bar
+      doc.setFillColor(233, 196, 106);
+      doc.rect(0, 85, pageW, 3, "F");
+
+      // Brand: House Helper
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(26);
+      doc.setTextColor(255, 255, 255);
+      doc.text("House Helper", margin, 42);
+
+      // Tagline
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(127, 205, 185);
+      doc.text("HOUSEKEEPER PREP ASSISTANT", margin, 57);
+
+      // Right side: name + day
+      const dateStr = today.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(15);
+      doc.setTextColor(255, 255, 255);
+      doc.text(`${profile.housekeeperName} — ${activeDay}`, pageW - margin, 40, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(127, 205, 185);
+      doc.text(dateStr, pageW - margin, 55, { align: "right" });
+
+      let y = 112;
+
+      // ── Helper: section header ──
+      const sectionHeader = (label) => {
+        if (y > 700) { doc.addPage(); y = 48; }
+        doc.setFillColor(30, 110, 105);
+        doc.roundedRect(margin, y, contentW, 26, 4, 4, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(255, 255, 255);
+        doc.text(label, margin + 12, y + 17);
+        y += 36;
+      };
+
+      // ── Helper: page break check ──
+      const checkPage = (needed = 20) => {
+        if (y + needed > 755) { doc.addPage(); y = 48; }
+      };
+
+      // ── Tasks section ──
+      if (tasks.length > 0) {
+        sectionHeader("Tasks for " + profile.housekeeperName);
+        tasks.forEach((task) => {
+          checkPage(20);
+          // Checkbox square
+          doc.setDrawColor(168, 197, 192);
+          doc.setLineWidth(1);
+          doc.rect(margin + 1, y + 1, 11, 11);
+          // Task text
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(11);
+          doc.setTextColor(26, 46, 43);
+          const taskLabel = task.text + (task.tag !== "routine" ? `  [${task.tag}]` : "");
+          const lines = doc.splitTextToSize(taskLabel, contentW - 22);
+          doc.text(lines, margin + 18, y + 10);
+          y += lines.length * 14 + 7;
+        });
+        y += 12;
+      }
+
+      // ── Meals section ──
+      if (meals.length > 0) {
+        sectionHeader("Meals to Prepare");
+        meals.forEach((meal) => {
+          checkPage(28);
+          // Day badge
+          doc.setFillColor(30, 110, 105);
+          doc.roundedRect(margin, y + 1, 32, 16, 3, 3, "F");
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8);
+          doc.setTextColor(255, 255, 255);
+          doc.text((meal.day || "").toUpperCase(), margin + 16, y + 12, { align: "center" });
+          // Meal name
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(12);
+          doc.setTextColor(26, 46, 43);
+          doc.text(meal.name || "", margin + 40, y + 12);
+          y += 20;
+          // Category
+          if (meal.category) {
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(42, 157, 143);
+            doc.text(meal.category.toUpperCase(), margin + 40, y + 2);
+            y += 10;
+          }
+          // Notes
+          if (meal.notes) {
+            checkPage(14);
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(10);
+            doc.setTextColor(107, 143, 138);
+            const noteLines = doc.splitTextToSize(meal.notes, contentW - 44);
+            doc.text(noteLines, margin + 40, y + 2);
+            y += noteLines.length * 12 + 2;
+          }
+          y += 10;
+          // Divider
+          doc.setDrawColor(212, 236, 231);
+          doc.setLineWidth(0.5);
+          doc.line(margin, y, margin + contentW, y);
+          y += 8;
+        });
+        y += 6;
+      }
+
+      // ── Shopping section ──
+      if (shopping.length > 0) {
+        sectionHeader("Shopping List");
+        const colW = (contentW - 16) / 2;
+        const half = Math.ceil(shopping.length / 2);
+        for (let i = 0; i < half; i++) {
+          checkPage(18);
+          const rowY = y;
+          // Left item
+          doc.setFillColor(42, 157, 143);
+          doc.circle(margin + 5, rowY + 6, 3, "F");
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          doc.setTextColor(26, 46, 43);
+          const leftLines = doc.splitTextToSize(shopping[i] || "", colW - 14);
+          doc.text(leftLines, margin + 14, rowY + 9);
+          // Right item
+          if (shopping[i + half]) {
+            const rx = margin + colW + 16;
+            doc.setFillColor(42, 157, 143);
+            doc.circle(rx + 5, rowY + 6, 3, "F");
+            const rightLines = doc.splitTextToSize(shopping[i + half], colW - 14);
+            doc.text(rightLines, rx + 14, rowY + 9);
+          }
+          y += Math.max(leftLines.length, 1) * 13 + 5;
+        }
+      }
+
+      // ── Footer on every page ──
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        doc.setDrawColor(212, 236, 231);
+        doc.setLineWidth(0.5);
+        doc.line(margin, 768, margin + contentW, 768);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(168, 197, 192);
+        doc.text("House Helper", margin, 780);
+        doc.text(`${p} of ${totalPages}`, pageW - margin, 780, { align: "right" });
+        if (greeting) {
+          const greetLines = doc.splitTextToSize(greeting, contentW - 60);
+          doc.setFont("helvetica", "italic");
+          doc.setFontSize(8);
+          doc.text(greetLines[0] || "", margin + 60, 780, { maxWidth: contentW - 120 });
+        }
+      }
+
+      // ── Share or download ──
+      const fileName = `HouseHelper-${activeDay}-${profile.housekeeperName}.pdf`;
+      const blob = doc.output("blob");
+
+      if (canNativeShare) {
+        const file = new File([blob], fileName, { type: "application/pdf" });
+        try {
+          await navigator.share({
+            files: [file],
+            title: `House Helper — ${activeDay} Plan`,
+            text: `Visit instructions for ${profile.housekeeperName}`,
+          });
+        } catch (shareErr) {
+          if (shareErr.name !== "AbortError") {
+            // Share was dismissed or failed — fall back to download
+            triggerDownload(blob, fileName);
+          }
+        }
+      } else {
+        triggerDownload(blob, fileName);
+        showToast("PDF downloaded");
+      }
+    } catch (err) {
+      console.error("PDF error:", err);
+      showToast("PDF generation failed — try again");
+    }
+    setGeneratingPdf(false);
+  };
+
+  const triggerDownload = (blob, fileName) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   // ── Meal actions ────────────────────────────────────────────────────────────
@@ -583,7 +888,7 @@ Already planned: ${meals.map(m=>m.name).join(", ")}.
 Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
       );
       setMeals(ms => ms.map(m => m.id===meal.id ? {...m, name:result.name, category:result.category, notes:result.notes} : m));
-      showToast("Meal swapped ✓");
+      showToast("Meal swapped");
     } catch { showToast("Swap failed — try again"); }
     setSwapping(null);
   };
@@ -611,7 +916,7 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
       );
       setShopping(result.shopping||[]);
       setCheckedShop({});
-      showToast("Shopping list refreshed ✓");
+      showToast("Shopping list refreshed");
     } catch { showToast("Could not refresh — try again"); }
     setRefreshingShop(false);
   };
@@ -631,10 +936,10 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
     if (!draftRecipe.name.trim()) { showToast("Please enter a recipe name"); return; }
     if (editingRecipe) {
       setRecipes(rs => rs.map(r => r.id===editingRecipe ? {...draftRecipe, id:editingRecipe} : r));
-      showToast("Recipe updated ✓");
+      showToast("Recipe updated");
     } else {
       setRecipes(rs => [...rs, {...draftRecipe, id:Date.now().toString()}]);
-      showToast("Recipe added ✓");
+      showToast("Recipe added");
     }
     setShowRecipeForm(false);
   };
@@ -699,7 +1004,7 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
     const toAdd = importResults.filter(r => isSelected(r.id));
     if (!toAdd.length) { showToast("Select at least one recipe"); return; }
     setRecipes(rs => [...rs, ...toAdd.map(r => ({...r, id:Date.now().toString()+Math.random()}))]);
-    showToast(`${toAdd.length} recipe${toAdd.length>1?"s":""} added ✓`);
+    showToast(`${toAdd.length} recipe${toAdd.length>1?"s":""} added`);
     setShowImport(false);
     setImportResults([]);
     setImportPasteText(""); setImportNameText(""); setImportBulkText(""); setImportPhoto(null);
@@ -713,13 +1018,30 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
 
         {/* Header */}
         <div className="header">
+          <div className="header-glow" />
+          <div className="header-gold-bar" />
           <div className="header-brand">
             <h1>House Helper</h1>
             <p>Housekeeper Prep Assistant</p>
           </div>
           <div className="header-actions">
-            <button className="btn btn-ghost" onClick={() => { setDraftProfile({...profile}); setShowSettings(true); }}>⚙ Profile</button>
-            <button className="btn btn-gold" onClick={() => setShowPrint(true)} disabled={!tasks.length && !meals.length}>Print Sheet</button>
+            <button className="btn btn-ghost" onClick={() => { setDraftProfile({...profile}); setShowSettings(true); }}>
+              &#9881; Profile
+            </button>
+            <button
+              className="btn btn-share"
+              onClick={generateAndSharePDF}
+              disabled={generatingPdf || (!tasks.length && !meals.length)}
+              style={{padding:"7px 13px", fontSize:13}}
+            >
+              {generatingPdf
+                ? <><div className="spinner" style={{width:13,height:13,borderWidth:2}}/>Generating…</>
+                : canNativeShare ? "⬆ Share Plan" : "⬇ Download PDF"
+              }
+            </button>
+            <button className="btn btn-gold" onClick={() => setShowPrint(true)} disabled={!tasks.length && !meals.length}>
+              Print Sheet
+            </button>
           </div>
         </div>
 
@@ -755,7 +1077,7 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
             {/* Error display */}
             {lastError && (
               <div style={{background:"#fce8e8",border:"1px solid #f0c0c0",borderRadius:"var(--radius-md)",padding:"12px 16px",marginBottom:16,fontSize:13,color:"#8b0000",lineHeight:1.6}}>
-                <div style={{fontWeight:500,marginBottom:4}}>⚠ Error details (please copy and share):</div>
+                <div style={{fontWeight:500,marginBottom:4}}>⚠ Error details:</div>
                 <div style={{fontFamily:"monospace",fontSize:12,wordBreak:"break-all"}}>{lastError}</div>
                 <button onClick={() => setLastError("")} style={{marginTop:8,fontSize:11,background:"none",border:"1px solid #f0c0c0",borderRadius:4,padding:"3px 8px",cursor:"pointer",color:"#8b0000"}}>Dismiss</button>
               </div>
@@ -957,7 +1279,7 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
             </div>
             <div className="panel-actions">
               <button className="panel-cancel" onClick={() => setShowSettings(false)}>Cancel</button>
-              <button className="panel-save" onClick={() => { setProfile(draftProfile); setShowSettings(false); showToast("Profile saved ✓"); }}>Save</button>
+              <button className="panel-save" onClick={() => { setProfile(draftProfile); setShowSettings(false); showToast("Profile saved"); }}>Save</button>
             </div>
           </div>
         </div>
@@ -1013,6 +1335,7 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
                       <span className="tmpl-name">{tmpl.name}</span>
                       <div style={{display:"flex",gap:5}}>
                         <button className="recipe-btn" onClick={() => loadTemplate(tmpl)}>Load</button>
+                        <button className="recipe-btn" onClick={() => { setShowTaskPanel(false); openEditTemplate(tmpl); }}>Edit</button>
                         <button className="recipe-btn del" onClick={() => { setTemplates(ts=>ts.filter(t=>t.id!==tmpl.id)); showToast("Template removed"); }}>Remove</button>
                       </div>
                     </div>
@@ -1035,6 +1358,55 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ EDIT TEMPLATE PANEL ═══ */}
+      {editingTemplate && (
+        <div className="overlay" onClick={e => e.target===e.currentTarget && setEditingTemplate(null)}>
+          <div className="panel" style={{maxWidth:520}}>
+            <h2>Edit Template</h2>
+
+            <div className="field" style={{marginBottom:16}}>
+              <label>Template Name</label>
+              <input
+                value={editTmplName}
+                onChange={e => setEditTmplName(e.target.value)}
+                placeholder="e.g. Deep Clean Monday"
+              />
+            </div>
+
+            <div style={{fontSize:11,textTransform:"uppercase",letterSpacing:"0.06em",color:"var(--ink-soft)",fontWeight:500,marginBottom:8}}>
+              Tasks ({editTmplTasks.length})
+            </div>
+
+            <div className="card" style={{marginBottom:12,maxHeight:300,overflowY:"auto"}}>
+              {editTmplTasks.length === 0 && (
+                <div style={{padding:"16px 14px",fontSize:13,color:"var(--ink-faint)"}}>No tasks yet — add one below.</div>
+              )}
+              {editTmplTasks.map((task, idx) => (
+                <div className="task-row" key={idx}>
+                  <span className="task-text" style={{flex:1}}>{task}</span>
+                  <button className="task-del" onClick={() => removeEditTask(idx)} title="Remove task">×</button>
+                </div>
+              ))}
+              <div className="add-row">
+                <input
+                  className="add-input"
+                  placeholder="Add a task and press Enter…"
+                  value={newEditTask}
+                  onChange={e => setNewEditTask(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && addEditTask()}
+                />
+                <button className="add-btn" onClick={addEditTask}>+</button>
+              </div>
+            </div>
+
+            <div className="panel-actions">
+              <button className="panel-cancel" onClick={() => setEditingTemplate(null)}>Cancel</button>
+              <button className="panel-save" onClick={saveEditedTemplate}>Save Template</button>
+            </div>
           </div>
         </div>
       )}
@@ -1063,7 +1435,7 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
             <div className="field">
               <label>Family Notes</label>
               <textarea rows={2} placeholder="e.g. Boys love this. Double the recipe. Good for Sundays." value={draftRecipe.notes} onChange={e => setDraftRecipe(r=>({...r,notes:e.target.value}))} />
-              <div className="field-hint">Tips, preferences, or serving suggestions for Yuri</div>
+              <div className="field-hint">Tips, preferences, or serving suggestions for {profile.housekeeperName}</div>
             </div>
             <div className="field">
               <label>Main Ingredients</label>
@@ -1215,9 +1587,23 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
               </div>
             )}
             {greeting && <div style={{fontSize:12,color:"var(--ink-soft)",fontStyle:"italic",marginTop:10,borderTop:"1px solid var(--border)",paddingTop:10}}>{greeting}</div>}
+
             <div style={{display:"flex",gap:9,marginTop:18,borderTop:"1px solid var(--border)",paddingTop:14}}>
               <button className="panel-cancel" onClick={() => setShowPrint(false)}>Close</button>
-              <button className="panel-save" onClick={() => window.print()}>🖨 Print</button>
+              <button
+                className="btn-share"
+                onClick={generateAndSharePDF}
+                disabled={generatingPdf}
+                style={{flex:1}}
+              >
+                {generatingPdf
+                  ? <><div className="spinner" style={{width:13,height:13,borderWidth:2}}/>Generating PDF…</>
+                  : canNativeShare ? "⬆ Share as PDF" : "⬇ Download PDF"
+                }
+              </button>
+              <button className="panel-save" onClick={() => window.print()} style={{flex:"0 0 auto",padding:"10px 16px"}}>
+                🖨 Print
+              </button>
             </div>
           </div>
         </div>
@@ -1231,7 +1617,7 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
 // ─── Preferences Panel ────────────────────────────────────────────────────────
 function PreferencesPanel({ profile, setProfile, showToast }) {
   const [draft, setDraft] = useState({...profile});
-  const save = () => { setProfile(draft); showToast("Preferences saved ✓"); };
+  const save = () => { setProfile(draft); showToast("Preferences saved"); };
   return (
     <div className="card" style={{padding:"18px 20px"}}>
       <div className="field">
@@ -1249,5 +1635,4 @@ function PreferencesPanel({ profile, setProfile, showToast }) {
   );
 }
 
-// CodeSandbox alias
 export { HouseHelper as App };
