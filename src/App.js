@@ -43,7 +43,7 @@ async function callClaude(system, user, onChunk) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 1500,
       system,
       messages: [{ role: "user", content: user }]
@@ -64,7 +64,7 @@ async function callClaudeJSON(system, user) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 1500,
       system,
       messages: [{ role: "user", content: user }]
@@ -659,7 +659,7 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
-          model:"claude-sonnet-4-20250514",
+          model:"claude-sonnet-4-6",
           max_tokens:1500,
           system: IMPORT_SYS,
           messages:[{ role:"user", content:[...contentBlocks, { type:"text", text: IMPORT_PROMPT_SUFFIX }] }]
