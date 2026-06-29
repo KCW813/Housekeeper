@@ -708,7 +708,8 @@ export default function HouseHelper() {
   const [showTaskPanel, setShowTaskPanel]   = useState(false);
   const [taskPanelTab, setTaskPanelTab]     = useState("bulk");
   const [showRecipeForm, setShowRecipeForm] = useState(false);
-  const [viewingRecipe, setViewingRecipe]   = useState(null);
+  const [viewingRecipe, setViewingRecipe]     = useState(null);
+  const [generatingDetails, setGeneratingDetails] = useState(null); // recipe id currently being AI-filled
   const [showImport, setShowImport]         = useState(false);
   const [showPrint, setShowPrint]           = useState(false);
   const [editingRecipe, setEditingRecipe]   = useState(null);
@@ -1213,6 +1214,58 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
     }
     setShowRecipeForm(false);
   };
+  const generateFullDetails = async (recipe) => {
+    setGeneratingDetails(recipe.id);
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 3000,
+          system: "You are a professional recipe writer. Return ONLY valid JSON, no markdown, no extra text.",
+          messages: [{ role: "user", content:
+            `Generate complete detailed recipe information for "${recipe.name}" (${recipe.category}, cook time: ${recipe.cookTime || "unknown"}).
+Return exactly this JSON object:
+{
+  "detailedIngredients": ["2 lbs chicken thighs, boneless and skinless", "4 cloves garlic, minced"],
+  "instructions": ["Step text without a number prefix", "Next step text"],
+  "tips": "One or two sentences about serving or storage."
+}
+Rules:
+- detailedIngredients: 8-14 items, each with exact quantities for a family of 4.
+- instructions: 6-10 clearly written steps a non-cook can follow. Do NOT include step numbers in the text.
+- tips: 1-2 sentences on serving, storage, or a useful shortcut.`
+          }]
+        })
+      });
+      const data = await response.json();
+      if (data.error) throw new Error(JSON.stringify(data.error));
+      let text = data.content.map(b => b.text || "").join("");
+      text = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      const start = text.indexOf("{");
+      const end = text.lastIndexOf("}");
+      if (start !== -1 && end !== -1) text = text.slice(start, end + 1);
+      const result = JSON.parse(text);
+      const ingLines = result.detailedIngredients || [];
+      const updated = {
+        ...recipe,
+        detailedIngredients: ingLines,
+        instructions: result.instructions || [],
+        tips: result.tips || recipe.tips || "",
+        ingredients: ingLines.length > 0 ? ingLines.join(", ") : recipe.ingredients,
+      };
+      setRecipes(rs => rs.map(r => r.id === recipe.id ? updated : r));
+      // Keep the detail view fresh if it's open for this recipe
+      setViewingRecipe(prev => prev?.id === recipe.id ? updated : prev);
+      showToast("Full recipe details added");
+    } catch (e) {
+      console.error("Generate details error:", e);
+      showToast("Could not generate details — try again");
+    }
+    setGeneratingDetails(null);
+  };
+
   const deleteRecipe = (id) => { setRecipes(rs => rs.filter(r=>r.id!==id)); showToast("Recipe removed"); };
 
   const filteredRecipes = recipes.filter(r => {
@@ -1522,6 +1575,18 @@ Rules: detailedIngredients must include exact quantities. instructions must have
                   <div className="recipe-name">{r.name}</div>
                   {r.cookTime && <div className="recipe-meta">Cook time: {r.cookTime}</div>}
                   {r.notes && <div className="recipe-notes">{r.notes}</div>}
+                  {(!r.detailedIngredients?.length || !r.instructions?.length) && (
+                    <button
+                      className="recipe-btn"
+                      style={{marginTop:8,width:"100%",justifyContent:"center",color:"var(--teal-dark)",borderColor:"var(--teal-light)",background:"var(--teal-faint)",display:"flex",alignItems:"center",gap:5}}
+                      disabled={generatingDetails === r.id}
+                      onClick={() => generateFullDetails(r)}
+                    >
+                      {generatingDetails === r.id
+                        ? <><span className="spinner spinner-teal" style={{width:11,height:11,borderWidth:1.5}}/>Generating…</>
+                        : "✦ Generate Full Details"}
+                    </button>
+                  )}
                   <div className="recipe-actions">
                     <button className="recipe-btn view" onClick={() => setViewingRecipe(r)}>View Recipe</button>
                     <button className="recipe-btn" onClick={() => openEditRecipe(r)}>Edit</button>
