@@ -1222,8 +1222,25 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
   });
 
   // ── Recipe import ───────────────────────────────────────────────────────────
-  const IMPORT_SYS = "You are a recipe extraction assistant. Return ONLY valid JSON arrays, no markdown.";
-  const IMPORT_PROMPT_SUFFIX = `Return a JSON array: [{ "name":"...", "category":"Poultry|Beef|Pork|Fish|Pasta|Mexican|Asian|Soup|Salad|Vegetarian|Other", "cookTime":"...", "notes":"brief family-friendly note", "ingredients":"comma-separated main ingredients" }]`;
+  const IMPORT_SYS = "You are a professional recipe writer and extraction assistant. Return ONLY valid JSON arrays, no markdown, no extra text.";
+  const IMPORT_PROMPT_SUFFIX = `Return a JSON array where each element has exactly these fields:
+{
+  "name": "Recipe Name",
+  "category": "Poultry|Beef|Pork|Fish|Pasta|Mexican|Asian|Soup|Salad|Vegetarian|Other",
+  "cookTime": "e.g. 45 min or 1 hr 30 min",
+  "notes": "One or two sentence family-friendly note about the dish",
+  "ingredients": "comma-separated ingredient names (no quantities) for reference",
+  "detailedIngredients": [
+    "2 lbs chicken thighs, boneless and skinless",
+    "4 cloves garlic, minced"
+  ],
+  "instructions": [
+    "Preheat oven to 400°F and line a sheet pan with parchment.",
+    "Pat chicken dry and season all over with salt and pepper."
+  ],
+  "tips": "Serving suggestion or storage tip, 1-2 sentences."
+}
+Rules: detailedIngredients must include exact quantities. instructions must have 6-10 clearly written steps a non-cook can follow. Do not number the steps — just write the text.`;
 
   const parseImport = async (contentBlocks) => {
     setImportBusy(true);
@@ -1235,7 +1252,7 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
         headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           model:"claude-sonnet-4-6",
-          max_tokens:1500,
+          max_tokens:4000,
           system: IMPORT_SYS,
           messages:[{ role:"user", content:[...contentBlocks, { type:"text", text: IMPORT_PROMPT_SUFFIX }] }]
         })
@@ -1243,8 +1260,21 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
       const data = await response.json();
       let text = data.content.map(b=>b.text||"").join("");
       text = text.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
+      const jsonStart = text.search(/\[/);
+      const jsonEnd = text.lastIndexOf("]");
+      if (jsonStart !== -1 && jsonEnd !== -1) text = text.slice(jsonStart, jsonEnd + 1);
       const list = JSON.parse(text);
-      setImportResults(list.map((r,i) => ({ id:`imp_${i}_${Date.now()}`, name:r.name||"Untitled", category:r.category||"Other", cookTime:r.cookTime||"", notes:r.notes||"", ingredients:r.ingredients||"" })));
+      setImportResults(list.map((r,i) => ({
+        id: `imp_${i}_${Date.now()}`,
+        name: r.name || "Untitled",
+        category: r.category || "Other",
+        cookTime: r.cookTime || "",
+        notes: r.notes || "",
+        ingredients: r.ingredients || (r.detailedIngredients || []).join(", "),
+        detailedIngredients: r.detailedIngredients || [],
+        instructions: r.instructions || [],
+        tips: r.tips || "",
+      })));
     } catch { showToast("Could not read recipe — try again"); }
     setImportBusy(false);
   };
