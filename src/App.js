@@ -720,7 +720,7 @@ export default function HouseHelper() {
   const [newTmplName, setNewTmplName]   = useState("");
 
   // Recipe form
-  const [draftRecipe, setDraftRecipe] = useState({ name:"", category:"Poultry", cookTime:"", notes:"", ingredients:"" });
+  const [draftRecipe, setDraftRecipe] = useState({ name:"", category:"Poultry", cookTime:"", notes:"", ingredients:"", detailedIngredients:"", instructions:"", tips:"" });
 
   // Import
   const [importTab, setImportTab]       = useState("name");
@@ -1176,22 +1176,39 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
 
   // ── Recipe CRUD ─────────────────────────────────────────────────────────────
   const openNewRecipe = () => {
-    setDraftRecipe({ name:"", category:"Poultry", cookTime:"", notes:"", ingredients:"" });
+    setDraftRecipe({ name:"", category:"Poultry", cookTime:"", notes:"", ingredients:"", detailedIngredients:"", instructions:"", tips:"" });
     setEditingRecipe(null);
     setShowRecipeForm(true);
   };
   const openEditRecipe = (r) => {
-    setDraftRecipe({...r});
+    setDraftRecipe({
+      ...r,
+      detailedIngredients: (r.detailedIngredients || []).join("\n"),
+      instructions: (r.instructions || []).join("\n"),
+      tips: r.tips || "",
+    });
     setEditingRecipe(r.id);
     setShowRecipeForm(true);
   };
   const saveRecipe = () => {
     if (!draftRecipe.name.trim()) { showToast("Please enter a recipe name"); return; }
+    const ingLines = draftRecipe.detailedIngredients
+      .split("\n").map(l => l.trim()).filter(Boolean);
+    const stepLines = draftRecipe.instructions
+      .split("\n").map(l => l.trim()).filter(Boolean);
+    const saved = {
+      ...draftRecipe,
+      detailedIngredients: ingLines,
+      instructions: stepLines,
+      tips: draftRecipe.tips.trim(),
+      // Keep flat ingredients string in sync for the shopping-list AI context
+      ingredients: ingLines.length > 0 ? ingLines.join(", ") : draftRecipe.ingredients,
+    };
     if (editingRecipe) {
-      setRecipes(rs => rs.map(r => r.id===editingRecipe ? {...draftRecipe, id:editingRecipe} : r));
+      setRecipes(rs => rs.map(r => r.id===editingRecipe ? {...saved, id:editingRecipe} : r));
       showToast("Recipe updated");
     } else {
-      setRecipes(rs => [...rs, {...draftRecipe, id:Date.now().toString()}]);
+      setRecipes(rs => [...rs, {...saved, id:Date.now().toString()}]);
       showToast("Recipe added");
     }
     setShowRecipeForm(false);
@@ -1764,12 +1781,22 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
             <div className="field">
               <label>Family Notes</label>
               <textarea rows={2} placeholder="e.g. Boys love this. Double the recipe. Good for Sundays." value={draftRecipe.notes} onChange={e => setDraftRecipe(r=>({...r,notes:e.target.value}))} />
-              <div className="field-hint">Tips, preferences, or serving suggestions for {profile.housekeeperName}</div>
+              <div className="field-hint">Brief note shown on the recipe card and to the housekeeper</div>
             </div>
             <div className="field">
-              <label>Main Ingredients</label>
-              <textarea rows={2} placeholder="e.g. Chicken thighs, garlic, lemon, rosemary, potatoes, olive oil" value={draftRecipe.ingredients} onChange={e => setDraftRecipe(r=>({...r,ingredients:e.target.value}))} />
-              <div className="field-hint">Used to build the shopping list — separate with commas</div>
+              <label>Detailed Ingredients</label>
+              <textarea rows={6} placeholder={"One ingredient per line with quantity, e.g:\n2 lbs chicken thighs, boneless\n4 cloves garlic, minced\n3 tbsp olive oil"} value={draftRecipe.detailedIngredients} onChange={e => setDraftRecipe(r=>({...r,detailedIngredients:e.target.value}))} />
+              <div className="field-hint">One ingredient per line — quantities will appear in the full recipe view</div>
+            </div>
+            <div className="field">
+              <label>Step-by-Step Instructions</label>
+              <textarea rows={8} placeholder={"One step per line, e.g:\nPreheat oven to 400°F and line a sheet pan with parchment.\nPat chicken dry and season all over with salt and pepper.\nRoast 25–30 minutes until golden and cooked through."} value={draftRecipe.instructions} onChange={e => setDraftRecipe(r=>({...r,instructions:e.target.value}))} />
+              <div className="field-hint">One step per line — steps are numbered automatically in the recipe view</div>
+            </div>
+            <div className="field">
+              <label>Tips &amp; Serving Suggestions</label>
+              <textarea rows={2} placeholder="e.g. Great served with crusty bread. Leftovers freeze well for up to 3 months." value={draftRecipe.tips} onChange={e => setDraftRecipe(r=>({...r,tips:e.target.value}))} />
+              <div className="field-hint">Optional — shown in a highlighted box at the bottom of the recipe</div>
             </div>
             <div className="panel-actions">
               <button className="panel-cancel" onClick={() => setShowRecipeForm(false)}>Cancel</button>
