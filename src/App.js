@@ -615,9 +615,18 @@ const STYLES = `
   .print-section h3 { font-family: 'Playfair Display', serif; font-size: 14px; color: var(--ink); border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 9px; }
   .print-task { font-size: 13px; color: var(--ink); padding: 4px 0; display: flex; gap: 9px; }
   .print-task::before { content: "☐"; color: var(--teal-mid); flex-shrink: 0; }
-  .print-meal { font-size: 13px; padding: 5px 0; display: flex; gap: 10px; border-bottom: 0.5px solid var(--border-soft); }
+  .print-meal { font-size: 13px; padding: 8px 0 10px; border-bottom: 0.5px solid var(--border-soft); }
   .print-meal:last-child { border-bottom: none; }
+  .print-meal-top { display: flex; gap: 10px; align-items: baseline; }
   .print-meal-day { color: var(--teal-dark); font-weight: 500; min-width: 34px; flex-shrink: 0; }
+  .print-meal-details { margin-top: 7px; padding-left: 44px; }
+  .print-meal-details-label { font-size: 11px; font-weight: 600; color: var(--teal-dark); text-transform: uppercase; letter-spacing: 0.04em; margin: 6px 0 3px; }
+  .print-meal-ing { font-size: 11.5px; color: var(--ink); line-height: 1.6; columns: 2; gap: 12px; }
+  .print-meal-ing li { break-inside: avoid; list-style: none; padding-left: 12px; position: relative; }
+  .print-meal-ing li::before { content: "–"; position: absolute; left: 0; color: var(--teal-mid); }
+  .print-meal-steps { font-size: 11.5px; color: var(--ink); line-height: 1.6; margin: 0; padding: 0; list-style: none; }
+  .print-meal-steps li { padding: 2px 0 2px 22px; position: relative; }
+  .print-meal-steps li .step-num { position: absolute; left: 0; width: 16px; height: 16px; border-radius: 50%; background: var(--teal-mid); color: #fff; font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; top: 3px; }
   .print-shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 18px; }
   .print-shop-item { font-size: 13px; color: var(--ink); padding: 4px 0; display: flex; gap: 8px; align-items: center; }
   .print-shop-item::before { content: "○"; color: var(--teal-mid); font-size: 10px; }
@@ -999,6 +1008,10 @@ Rules:
       if (meals.length > 0) {
         sectionHeader("Meals to Prepare");
         meals.forEach((meal) => {
+          const rec = recipes.find(r => r.name.toLowerCase() === meal.name.toLowerCase());
+          const ings = rec?.detailedIngredients?.length ? rec.detailedIngredients : null;
+          const steps = rec?.instructions?.length ? rec.instructions : null;
+
           checkPage(28);
           // Day badge
           doc.setFillColor(30, 110, 105);
@@ -1031,12 +1044,65 @@ Rules:
             doc.text(noteLines, margin + 40, y + 2);
             y += noteLines.length * 12 + 2;
           }
-          y += 10;
+
+          // ── Ingredients ──
+          if (ings) {
+            checkPage(22);
+            y += 4;
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            doc.setTextColor(30, 110, 105);
+            doc.text("INGREDIENTS", margin + 40, y + 8);
+            y += 14;
+            ings.forEach((ing) => {
+              checkPage(14);
+              doc.setFillColor(42, 157, 143);
+              doc.circle(margin + 46, y + 4, 2, "F");
+              doc.setFont("helvetica", "normal");
+              doc.setFontSize(9.5);
+              doc.setTextColor(26, 46, 43);
+              const ingLines = doc.splitTextToSize(ing, contentW - 60);
+              doc.text(ingLines, margin + 54, y + 7);
+              y += ingLines.length * 12 + 1;
+            });
+            y += 4;
+          }
+
+          // ── Instructions ──
+          if (steps) {
+            checkPage(22);
+            y += 2;
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            doc.setTextColor(30, 110, 105);
+            doc.text("INSTRUCTIONS", margin + 40, y + 8);
+            y += 14;
+            steps.forEach((step, idx) => {
+              checkPage(20);
+              // Step number circle
+              doc.setFillColor(30, 110, 105);
+              doc.circle(margin + 48, y + 5, 7, "F");
+              doc.setFont("helvetica", "bold");
+              doc.setFontSize(7);
+              doc.setTextColor(255, 255, 255);
+              doc.text(String(idx + 1), margin + 48, y + 8, { align: "center" });
+              // Step text
+              doc.setFont("helvetica", "normal");
+              doc.setFontSize(9.5);
+              doc.setTextColor(26, 46, 43);
+              const stepLines = doc.splitTextToSize(step, contentW - 68);
+              doc.text(stepLines, margin + 60, y + 8);
+              y += Math.max(stepLines.length * 12, 16) + 2;
+            });
+            y += 4;
+          }
+
+          y += 6;
           // Divider
           doc.setDrawColor(212, 236, 231);
           doc.setLineWidth(0.5);
           doc.line(margin, y, margin + contentW, y);
-          y += 8;
+          y += 10;
         });
         y += 6;
       }
@@ -2021,12 +2087,37 @@ Rules: detailedIngredients must include exact quantities. instructions must have
             {meals.length > 0 && (
               <div className="print-section">
                 <h3>🍽 Meals to Prepare</h3>
-                {meals.map(m => (
-                  <div className="print-meal" key={m.id}>
-                    <span className="print-meal-day">{m.day}</span>
-                    <span>{m.name}{m.notes?` — ${m.notes}`:""}</span>
-                  </div>
-                ))}
+                {meals.map(m => {
+                  const rec = recipes.find(r => r.name.toLowerCase() === m.name.toLowerCase());
+                  const ings = rec?.detailedIngredients?.length ? rec.detailedIngredients : null;
+                  const steps = rec?.instructions?.length ? rec.instructions : null;
+                  return (
+                    <div className="print-meal" key={m.id}>
+                      <div className="print-meal-top">
+                        <span className="print-meal-day">{m.day}</span>
+                        <span><strong>{m.name}</strong>{m.notes ? ` — ${m.notes}` : ""}</span>
+                      </div>
+                      {(ings || steps) && (
+                        <div className="print-meal-details">
+                          {ings && <>
+                            <div className="print-meal-details-label">Ingredients</div>
+                            <ul className="print-meal-ing">
+                              {ings.map((ing, i) => <li key={i}>{ing}</li>)}
+                            </ul>
+                          </>}
+                          {steps && <>
+                            <div className="print-meal-details-label">Instructions</div>
+                            <ol className="print-meal-steps">
+                              {steps.map((step, i) => (
+                                <li key={i}><span className="step-num">{i+1}</span>{step}</li>
+                              ))}
+                            </ol>
+                          </>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
             {shopping.length > 0 && (
