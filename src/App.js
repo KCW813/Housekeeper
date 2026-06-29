@@ -562,6 +562,8 @@ const STYLES = `
   .recipe-btn { font-family: 'DM Sans', sans-serif; font-size: 11px; padding: 4px 9px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--ink-soft); cursor: pointer; transition: all 0.15s; }
   .recipe-btn:hover { border-color: var(--teal-mid); color: var(--ink); }
   .recipe-btn.del:hover { border-color: var(--red); color: var(--red); }
+  .recipe-btn.view { background: var(--teal-faint); border-color: var(--teal-light); color: var(--teal-dark); font-weight: 500; }
+  .recipe-btn.view:hover { background: var(--teal-pale); border-color: var(--teal-mid); }
   .add-recipe-card { background: #fff; border: 1px dashed var(--teal-light); border-radius: var(--radius-md); padding: 13px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 130px; gap: 6px; transition: all 0.15s; }
   .add-recipe-card:hover { background: var(--teal-pale); border-color: var(--teal-mid); }
   .add-recipe-card span:first-child { font-size: 26px; color: var(--teal-mid); }
@@ -619,6 +621,26 @@ const STYLES = `
   .print-shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 18px; }
   .print-shop-item { font-size: 13px; color: var(--ink); padding: 4px 0; display: flex; gap: 8px; align-items: center; }
   .print-shop-item::before { content: "○"; color: var(--teal-mid); font-size: 10px; }
+
+  /* ── Recipe Detail Modal ── */
+  .recipe-detail-panel { background: var(--cream); border-radius: var(--radius-lg); width: 100%; max-width: 620px; max-height: 92vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(18,43,40,0.28); display: flex; flex-direction: column; }
+  .recipe-detail-header { background: linear-gradient(135deg, #122b28 0%, #1a5c57 50%, var(--teal-mid) 100%); padding: 22px 24px 18px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; position: relative; flex-shrink: 0; }
+  .recipe-detail-title { font-family: 'Playfair Display', serif; font-size: 21px; font-weight: 600; color: #fff; line-height: 1.2; margin-bottom: 6px; padding-right: 36px; }
+  .recipe-detail-meta { font-size: 12px; color: rgba(127,205,185,0.9); display: flex; gap: 14px; }
+  .recipe-detail-close { position: absolute; top: 14px; right: 14px; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+  .recipe-detail-close:hover { background: rgba(255,255,255,0.28); }
+  .recipe-detail-body { padding: 22px 24px; overflow-y: auto; }
+  .recipe-detail-section { margin-bottom: 22px; }
+  .recipe-detail-section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--teal-dark); font-weight: 600; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid var(--teal-pale); }
+  .recipe-notes-box { background: var(--teal-faint); border-left: 3px solid var(--teal-light); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; padding: 10px 13px; font-size: 13px; color: var(--ink-mid); font-style: italic; line-height: 1.55; }
+  .recipe-ing-list { list-style: none; }
+  .recipe-ing-item { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; font-size: 14px; color: var(--ink); border-bottom: 0.5px solid var(--border-soft); line-height: 1.4; }
+  .recipe-ing-item:last-child { border-bottom: none; }
+  .recipe-ing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal-mid); flex-shrink: 0; margin-top: 6px; }
+  .recipe-step { display: flex; gap: 13px; padding: 9px 0; font-size: 14px; color: var(--ink); border-bottom: 0.5px solid var(--border-soft); line-height: 1.55; align-items: flex-start; }
+  .recipe-step:last-child { border-bottom: none; }
+  .recipe-step-num { width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #1a5c57, var(--teal-mid)); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+  .recipe-tips-box { background: var(--gold-light); border: 1px solid rgba(233,196,106,0.45); border-left: 3px solid var(--gold); border-radius: var(--radius-sm); padding: 11px 13px; font-size: 13px; color: var(--ink-mid); line-height: 1.6; }
 
   /* ── PDF / Share button strip ── */
   .pdf-strip { display: flex; gap: 9px; margin-top: 10px; }
@@ -686,6 +708,7 @@ export default function HouseHelper() {
   const [showTaskPanel, setShowTaskPanel]   = useState(false);
   const [taskPanelTab, setTaskPanelTab]     = useState("bulk");
   const [showRecipeForm, setShowRecipeForm] = useState(false);
+  const [viewingRecipe, setViewingRecipe]   = useState(null);
   const [showImport, setShowImport]         = useState(false);
   const [showPrint, setShowPrint]           = useState(false);
   const [editingRecipe, setEditingRecipe]   = useState(null);
@@ -1452,8 +1475,8 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
                   <div className="recipe-name">{r.name}</div>
                   {r.cookTime && <div className="recipe-meta">Cook time: {r.cookTime}</div>}
                   {r.notes && <div className="recipe-notes">{r.notes}</div>}
-                  {r.ingredients && <div className="recipe-ing">Ingredients: {r.ingredients}</div>}
                   <div className="recipe-actions">
+                    <button className="recipe-btn view" onClick={() => setViewingRecipe(r)}>View Recipe</button>
                     <button className="recipe-btn" onClick={() => openEditRecipe(r)}>Edit</button>
                     <button className="recipe-btn del" onClick={() => deleteRecipe(r.id)}>Remove</button>
                   </div>
@@ -1636,6 +1659,82 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
             <div className="panel-actions">
               <button className="panel-cancel" onClick={() => setEditingTemplate(null)}>Cancel</button>
               <button className="panel-save" onClick={saveEditedTemplate}>Save Template</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ RECIPE DETAIL VIEW ═══ */}
+      {viewingRecipe && (
+        <div className="overlay" onClick={e => e.target === e.currentTarget && setViewingRecipe(null)}>
+          <div className="recipe-detail-panel">
+
+            {/* Sticky header */}
+            <div className="recipe-detail-header">
+              <button className="recipe-detail-close" onClick={() => setViewingRecipe(null)}>×</button>
+              <div className="recipe-detail-title">{viewingRecipe.name}</div>
+              <div className="recipe-detail-meta">
+                <span>{viewingRecipe.category}</span>
+                {viewingRecipe.cookTime && <><span>·</span><span>⏱ {viewingRecipe.cookTime}</span></>}
+              </div>
+            </div>
+
+            <div className="recipe-detail-body">
+
+              {/* Family Notes */}
+              {viewingRecipe.notes && (
+                <div className="recipe-detail-section">
+                  <div className="recipe-detail-section-title">Family Notes</div>
+                  <div className="recipe-notes-box">{viewingRecipe.notes}</div>
+                </div>
+              )}
+
+              {/* Ingredients */}
+              {viewingRecipe.detailedIngredients?.length > 0 ? (
+                <div className="recipe-detail-section">
+                  <div className="recipe-detail-section-title">Ingredients</div>
+                  <ul className="recipe-ing-list">
+                    {viewingRecipe.detailedIngredients.map((ing, i) => (
+                      <li key={i} className="recipe-ing-item">
+                        <span className="recipe-ing-dot" />
+                        {ing}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : viewingRecipe.ingredients ? (
+                <div className="recipe-detail-section">
+                  <div className="recipe-detail-section-title">Ingredients</div>
+                  <div style={{fontSize:14,color:"var(--ink)",lineHeight:1.6}}>{viewingRecipe.ingredients}</div>
+                </div>
+              ) : null}
+
+              {/* Instructions */}
+              {viewingRecipe.instructions?.length > 0 && (
+                <div className="recipe-detail-section">
+                  <div className="recipe-detail-section-title">Instructions</div>
+                  {viewingRecipe.instructions.map((step, i) => (
+                    <div key={i} className="recipe-step">
+                      <span className="recipe-step-num">{i + 1}</span>
+                      <span>{step}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Tips */}
+              {viewingRecipe.tips && (
+                <div className="recipe-detail-section">
+                  <div className="recipe-detail-section-title">Tips &amp; Serving</div>
+                  <div className="recipe-tips-box">{viewingRecipe.tips}</div>
+                </div>
+              )}
+
+              <div style={{display:"flex",gap:9,marginTop:8}}>
+                <button className="panel-cancel" style={{flex:1}} onClick={() => setViewingRecipe(null)}>Close</button>
+                <button className="panel-save" style={{flex:1}} onClick={() => { setViewingRecipe(null); openEditRecipe(viewingRecipe); }}>Edit Recipe</button>
+              </div>
+
             </div>
           </div>
         </div>
