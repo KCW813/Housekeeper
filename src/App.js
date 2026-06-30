@@ -541,6 +541,38 @@ const STYLES = `
   .btn-generate:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(18,43,40,0.35); }
   .btn-generate:hover::before { left: 130%; }
   .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-create-tasks {
+    width: 100%;
+    background: linear-gradient(135deg, #1e7d52 0%, #2d9d6f 50%, #3eb87f 100%);
+    border: none;
+    color: #fff;
+    padding: 15px;
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    transition: all 0.2s;
+    box-shadow: 0 3px 14px rgba(30,125,82,0.28);
+    letter-spacing: 0.01em;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-create-tasks::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -80%;
+    width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.09), transparent);
+    transform: skewX(-15deg);
+    transition: left 0.5s ease;
+  }
+  .btn-create-tasks:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(30,125,82,0.38); filter: brightness(0.93); }
+  .btn-create-tasks:hover::before { left: 130%; }
 
   /* ── Nav ── */
   .nav { display: flex; background: #fff; border-bottom: 1px solid var(--border); padding: 0 32px; box-shadow: 0 1px 6px rgba(30,110,105,0.05); }
@@ -1670,8 +1702,10 @@ Rules: detailedIngredients must include exact quantities. instructions must have
                   <span className="section-sub">{tasks.filter(t=>t.done).length}/{tasks.length} done</span>
                 )}
               </div>
+              <button className="btn-create-tasks" onClick={() => { setSelectedLibraryTasks({}); setShowTaskLibrary(true); }}>
+                ✓ Create Task List
+              </button>
               <div style={{display:"flex",gap:7,marginBottom:tasks.length ? 9 : 0,flexWrap:"wrap"}}>
-                <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setSelectedLibraryTasks({}); setShowTaskLibrary(true); }}>✓ Create Task List</button>
                 <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setShowTaskPanel(true); setTaskPanelTab("templates"); }}>📁 Load a template</button>
                 <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setShowTaskPanel(true); setTaskPanelTab("bulk"); }}>📋 Paste a list</button>
                 <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setShowTaskPanel(true); setTaskPanelTab("ai"); }}>✦ AI suggest</button>
