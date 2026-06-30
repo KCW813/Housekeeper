@@ -707,6 +707,35 @@ const STYLES = `
   .print-shop-item { font-size: 13px; color: var(--ink); padding: 4px 0; display: flex; gap: 8px; align-items: center; }
   .print-shop-item::before { content: "○"; color: var(--teal-mid); font-size: 10px; }
 
+  /* ── Task Library Panel ── */
+  .tl-panel { background: var(--cream); border-radius: var(--radius-lg); width: 100%; max-width: 580px; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(18,43,40,0.28); }
+  .tl-header { background: linear-gradient(135deg, #122b28 0%, #1a5c57 50%, var(--teal-mid) 100%); padding: 20px 24px 16px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; flex-shrink: 0; }
+  .tl-title { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .tl-subtitle { font-size: 12px; color: rgba(127,205,185,0.9); }
+  .tl-search-row { padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+  .tl-search { flex: 1; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); outline: none; }
+  .tl-search:focus { border-color: var(--teal-mid); }
+  .tl-counter { font-size: 12px; font-weight: 600; color: var(--teal-dark); background: var(--teal-faint); border: 1px solid var(--teal-pale); border-radius: 12px; padding: 3px 10px; white-space: nowrap; }
+  .tl-body { overflow-y: auto; flex: 1; padding: 8px 0; }
+  .tl-cat { border-bottom: 1px solid var(--border-soft); }
+  .tl-cat-hd { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer; user-select: none; background: transparent; border: none; width: 100%; text-align: left; }
+  .tl-cat-hd:hover { background: var(--teal-faint); }
+  .tl-cat-name { font-size: 13px; font-weight: 600; color: var(--teal-dark); flex: 1; }
+  .tl-cat-meta { font-size: 11px; color: var(--ink-faint); }
+  .tl-cat-chevron { font-size: 11px; color: var(--ink-faint); transition: transform 0.15s; }
+  .tl-cat-chevron.open { transform: rotate(90deg); }
+  .tl-select-all { font-size: 11px; color: var(--teal-mid); cursor: pointer; border: none; background: none; padding: 0; font-family: 'DM Sans', sans-serif; text-decoration: underline; }
+  .tl-select-all:hover { color: var(--teal-dark); }
+  .tl-tasks { padding: 2px 16px 8px; }
+  .tl-task-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--border-soft); cursor: pointer; }
+  .tl-task-row:last-child { border-bottom: none; }
+  .tl-task-row:hover .tl-task-text { color: var(--teal-dark); }
+  .tl-checkbox { width: 17px; height: 17px; border-radius: 4px; border: 1.5px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.12s; background: #fff; }
+  .tl-checkbox.checked { background: var(--teal-mid); border-color: var(--teal-mid); }
+  .tl-checkbox.checked::after { content: "✓"; color: #fff; font-size: 11px; font-weight: 700; }
+  .tl-task-text { font-size: 13px; color: var(--ink); line-height: 1.4; }
+  .tl-footer { padding: 14px 16px; border-top: 1px solid var(--border); display: flex; gap: 9px; flex-shrink: 0; background: #fff; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+
   /* ── Recipe Detail Modal ── */
   .recipe-detail-panel { background: var(--cream); border-radius: var(--radius-lg); width: 100%; max-width: 620px; max-height: 92vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(18,43,40,0.28); display: flex; flex-direction: column; }
   .recipe-detail-header { background: linear-gradient(135deg, #122b28 0%, #1a5c57 50%, var(--teal-mid) 100%); padding: 22px 24px 18px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; position: relative; flex-shrink: 0; }
@@ -1006,6 +1035,38 @@ Rules:
     setTemplates(ts => [...ts, { id:Date.now().toString(), name:newTmplName.trim(), tasks:tasks.map(t=>t.text) }]);
     setNewTmplName("");
     showToast("Template saved");
+  };
+
+  // ── Task Library ───────────────────────────────────────────────────────────
+  const [tlSearch, setTlSearch] = useState("");
+  const [tlOpenCats, setTlOpenCats] = useState(() => Object.fromEntries(TASK_LIBRARY.map(c => [c.category, true])));
+
+  const tlToggleTask = (id) =>
+    setSelectedLibraryTasks(prev => ({ ...prev, [id]: !prev[id] }));
+
+  const tlToggleCat = (cat) => {
+    const ids = TASK_LIBRARY.find(c => c.category === cat).tasks.map(t => t.id);
+    const allChecked = ids.every(id => selectedLibraryTasks[id]);
+    setSelectedLibraryTasks(prev => {
+      const next = { ...prev };
+      ids.forEach(id => { next[id] = !allChecked; });
+      return next;
+    });
+  };
+
+  const tlSelectedCount = Object.values(selectedLibraryTasks).filter(Boolean).length;
+
+  const addLibraryTasks = () => {
+    const existing = tasks.map(t => t.text.toLowerCase());
+    const toAdd = TASK_LIBRARY
+      .flatMap(c => c.tasks)
+      .filter(t => selectedLibraryTasks[t.id] && !existing.includes(t.text.toLowerCase()))
+      .map(t => ({ id: Date.now().toString() + Math.random(), text: t.text, tag: "routine", done: false }));
+    setTasks(ts => [...ts, ...toAdd]);
+    setShowTaskLibrary(false);
+    setSelectedLibraryTasks({});
+    setTlSearch("");
+    showToast(`${toAdd.length} task${toAdd.length !== 1 ? "s" : ""} added`);
   };
 
   // ── NEW: Template editing ───────────────────────────────────────────────────
@@ -1630,6 +1691,7 @@ Rules: detailedIngredients must include exact quantities. instructions must have
                   <button className="btn btn-outline" onClick={() => { setShowTaskPanel(true); setTaskPanelTab("templates"); }}>📁 Load a template</button>
                   <button className="btn btn-outline" onClick={() => { setShowTaskPanel(true); setTaskPanelTab("bulk"); }}>📋 Paste a list</button>
                   <button className="btn btn-outline" onClick={() => { setShowTaskPanel(true); setTaskPanelTab("ai"); }}>✦ AI suggest</button>
+                  <button className="btn btn-outline" onClick={() => { setSelectedLibraryTasks({}); setShowTaskLibrary(true); }}>✓ Create Task List</button>
                 </div>
               </div>
             )}
@@ -1645,6 +1707,7 @@ Rules: detailedIngredients must include exact quantities. instructions must have
                   <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setShowTaskPanel(true); setTaskPanelTab("bulk"); }}>+ Add list</button>
                   <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setShowTaskPanel(true); setTaskPanelTab("ai"); }}>✦ AI suggest</button>
                   <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setShowTaskPanel(true); setTaskPanelTab("templates"); }}>📁 Templates</button>
+                  <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setSelectedLibraryTasks({}); setShowTaskLibrary(true); }}>✓ Library</button>
                   <button className="btn btn-danger" style={{fontSize:12,padding:"5px 11px",marginLeft:"auto"}} onClick={() => { if(window.confirm("Clear all tasks?")) setTasks([]); }}>Clear all</button>
                 </div>
                 <div className="card">
@@ -2260,6 +2323,93 @@ Rules: detailedIngredients must include exact quantities. instructions must have
               </button>
               <button className="panel-save" onClick={() => window.print()} style={{flex:"0 0 auto",padding:"10px 16px"}}>
                 🖨 Print
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ TASK LIBRARY PANEL ═══ */}
+      {showTaskLibrary && (
+        <div className="overlay" onClick={e => e.target === e.currentTarget && setShowTaskLibrary(false)}>
+          <div className="tl-panel">
+            {/* Header */}
+            <div className="tl-header">
+              <div className="tl-title">Select Tasks for {activeDay}'s Visit</div>
+              <div className="tl-subtitle">Check the tasks you want to add to today's plan</div>
+            </div>
+
+            {/* Search + counter */}
+            <div className="tl-search-row">
+              <input
+                className="tl-search"
+                type="text"
+                placeholder="Search tasks…"
+                value={tlSearch}
+                onChange={e => setTlSearch(e.target.value)}
+                autoFocus
+              />
+              <span className="tl-counter">{tlSelectedCount} selected</span>
+            </div>
+
+            {/* Category list */}
+            <div className="tl-body">
+              {TASK_LIBRARY.map(cat => {
+                const q = tlSearch.toLowerCase();
+                const visible = cat.tasks.filter(t => !q || t.text.toLowerCase().includes(q));
+                if (!visible.length) return null;
+                const isOpen = tlOpenCats[cat.category] !== false;
+                const checkedInCat = visible.filter(t => selectedLibraryTasks[t.id]).length;
+                const allInCat = visible.every(t => selectedLibraryTasks[t.id]);
+                return (
+                  <div className="tl-cat" key={cat.category}>
+                    <button
+                      className="tl-cat-hd"
+                      onClick={() => setTlOpenCats(prev => ({ ...prev, [cat.category]: !isOpen }))}
+                    >
+                      <span className={`tl-cat-chevron ${isOpen ? "open" : ""}`}>▶</span>
+                      <span className="tl-cat-name">{cat.category}</span>
+                      {checkedInCat > 0 && (
+                        <span className="tl-cat-meta">{checkedInCat}/{visible.length} selected</span>
+                      )}
+                      <button
+                        className="tl-select-all"
+                        onClick={e => { e.stopPropagation(); tlToggleCat(cat.category); }}
+                      >
+                        {allInCat ? "Deselect all" : "Select all"}
+                      </button>
+                    </button>
+                    {isOpen && (
+                      <div className="tl-tasks">
+                        {visible.map(task => (
+                          <div
+                            className="tl-task-row"
+                            key={task.id}
+                            onClick={() => tlToggleTask(task.id)}
+                          >
+                            <div className={`tl-checkbox ${selectedLibraryTasks[task.id] ? "checked" : ""}`} />
+                            <span className="tl-task-text">{task.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="tl-footer">
+              <button className="panel-cancel" onClick={() => { setShowTaskLibrary(false); setSelectedLibraryTasks({}); setTlSearch(""); }}>
+                Cancel
+              </button>
+              <button
+                className="panel-save"
+                disabled={tlSelectedCount === 0}
+                onClick={addLibraryTasks}
+                style={tlSelectedCount === 0 ? { opacity: 0.45 } : {}}
+              >
+                Add {tlSelectedCount > 0 ? tlSelectedCount : ""} Task{tlSelectedCount !== 1 ? "s" : ""} to Plan
               </button>
             </div>
           </div>
