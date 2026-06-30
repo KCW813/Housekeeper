@@ -250,6 +250,82 @@ const DEFAULT_RECIPES = [
   },
 ];
 
+const TASK_LIBRARY = [
+  {
+    category: "Laundry",
+    tasks: [
+      { id: "tl-l1", text: "Full laundry — all bedrooms" },
+      { id: "tl-l2", text: "Wash and fold bedding" },
+      { id: "tl-l3", text: "Iron clothing as needed" },
+      { id: "tl-l4", text: "Wash and dry towels" },
+      { id: "tl-l5", text: "Put away all folded laundry" },
+    ],
+  },
+  {
+    category: "Kitchen",
+    tasks: [
+      { id: "tl-k1", text: "Wipe down counters and appliances" },
+      { id: "tl-k2", text: "Clean out refrigerator" },
+      { id: "tl-k3", text: "Empty and reset dishwasher" },
+      { id: "tl-k4", text: "Mop kitchen floor" },
+      { id: "tl-k5", text: "Clean stovetop and oven exterior" },
+      { id: "tl-k6", text: "Wipe cabinet fronts and drawer handles" },
+    ],
+  },
+  {
+    category: "Bathrooms",
+    tasks: [
+      { id: "tl-b1", text: "Scrub all bathrooms" },
+      { id: "tl-b2", text: "Restock soap and paper goods" },
+      { id: "tl-b3", text: "Clean mirrors and fixtures" },
+      { id: "tl-b4", text: "Scrub toilets and sinks" },
+      { id: "tl-b5", text: "Wash bath mats" },
+    ],
+  },
+  {
+    category: "Living Areas",
+    tasks: [
+      { id: "tl-v1", text: "Vacuum all rooms" },
+      { id: "tl-v2", text: "Dust surfaces and shelves" },
+      { id: "tl-v3", text: "Vacuum stairs" },
+      { id: "tl-v4", text: "Clean windows — interior" },
+      { id: "tl-v5", text: "Wipe down baseboards" },
+      { id: "tl-v6", text: "Tidy common areas and put items away" },
+    ],
+  },
+  {
+    category: "Bedrooms",
+    tasks: [
+      { id: "tl-r1", text: "Make all beds" },
+      { id: "tl-r2", text: "Tidy and organize closets" },
+      { id: "tl-r3", text: "Vacuum bedroom floors" },
+      { id: "tl-r4", text: "Collect and remove dishes from bedrooms" },
+      { id: "tl-r5", text: "Dust ceiling fans in bedrooms" },
+    ],
+  },
+  {
+    category: "Outdoor & Seasonal",
+    tasks: [
+      { id: "tl-o1", text: "Wipe down patio furniture" },
+      { id: "tl-o2", text: "Sweep porch and entryway" },
+      { id: "tl-o3", text: "Clean ceiling fans" },
+      { id: "tl-o4", text: "Wipe sliding glass doors — inside and out" },
+      { id: "tl-o5", text: "Sweep and hose down patio" },
+      { id: "tl-o6", text: "Shake out and clean doormats" },
+    ],
+  },
+  {
+    category: "Meal Prep",
+    tasks: [
+      { id: "tl-m1", text: "Prep and store ingredients for the week" },
+      { id: "tl-m2", text: "Wash and prep produce" },
+      { id: "tl-m3", text: "Load/unload dishwasher after meal prep" },
+      { id: "tl-m4", text: "Label and date all prepped containers" },
+      { id: "tl-m5", text: "Clear and wipe down prep surfaces" },
+    ],
+  },
+];
+
 const DEFAULT_TEMPLATES = [
   { id: "t1", name: "Deep Clean Monday", tasks: ["Full laundry — all bedrooms including boys", "Vacuum all rooms including stairs", "Mop kitchen and bathroom floors", "Scrub all bathrooms thoroughly", "Wipe down all kitchen counters and appliances", "Prep and store ingredients for 3 meals"] },
   { id: "t2", name: "Light Thursday", tasks: ["Touch-up vacuum main living areas", "Clean all bathrooms", "Restock paper goods and soap dispensers", "Fold and put away any remaining laundry", "Wipe kitchen counters and stovetop"] },
@@ -765,6 +841,8 @@ export default function HouseHelper() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [showTaskLibrary, setShowTaskLibrary] = useState(false);
+  const [selectedLibraryTasks, setSelectedLibraryTasks] = useState({});
   const canNativeShare = typeof navigator !== "undefined" && !!navigator.share;
 
   // ── Persistence ────────────────────────────────────────────────────────────
