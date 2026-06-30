@@ -17,7 +17,6 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker
       .register("/service-worker.js")
       .then((reg) => {
-        // When a new service worker is waiting, reload once it activates
         reg.addEventListener("updatefound", () => {
           const newWorker = reg.installing;
           if (!newWorker) return;
@@ -26,7 +25,6 @@ if ("serviceWorker" in navigator) {
               newWorker.state === "activated" &&
               navigator.serviceWorker.controller
             ) {
-              // New version available — reload to serve fresh assets
               window.location.reload();
             }
           });
