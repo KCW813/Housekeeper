@@ -940,23 +940,19 @@ export default function HouseHelper() {
     try {
       const result = await callClaudeJSON(
         "You are a household management assistant. Return ONLY valid JSON, no markdown.",
-        `Generate a complete housekeeper visit plan for ${activeDay}.
+        `Generate a meal plan for a housekeeper visit on ${activeDay}.
 
 Household: ${profile.familyMembers}
 Housekeeper: ${profile.housekeeperName}
 Today: ${todayName}
-Standard tasks: ${profile.standardTasks}
-Extra notes: ${profile.extraNotes}
 Dietary notes: ${profile.dietaryNotes}
+Extra notes: ${profile.extraNotes}
 
 RECIPE BOX (choose 3 meals from this list to prepare):
 ${recipeContext()}
 
 Return this exact JSON:
 {
-  "tasks": [
-    { "id": "1", "text": "task description", "tag": "routine", "done": false }
-  ],
   "meals": [
     { "id": "1", "day": "Tue", "name": "recipe name exactly as in box", "category": "category", "notes": "brief prep note for housekeeper" }
   ],
@@ -964,19 +960,16 @@ Return this exact JSON:
 }
 
 Rules:
-- 5-7 tasks. ${activeDay === "Monday" ? "Monday = full clean + laundry + meal prep." : "Thursday = lighter touch-up, bathrooms, restock."}
-- Tag tasks: routine | priority | seasonal
 - Choose exactly 3 meals from the Recipe Box. Vary by category.
 - Shopping list: 10-14 specific ingredients with rough quantities for all 3 meals combined.
 - Assign meals to realistic weekdays (Tue-Fri).`
       );
 
-      setTasks(result.tasks || []);
       setMeals(result.meals || []);
       setShopping(result.shopping || []);
 
       await callClaude(
-        "You are a warm household assistant. Write a 2-sentence friendly greeting for the homemaker about their upcoming housekeeper visit. Be specific, mention one meal by name. Conversational, not formal.",
+        "You are a warm household assistant. Write a 2-sentence friendly note for the homemaker about the meals being prepared this week. Be specific, mention one or two meals by name. Conversational, not formal.",
         `Housekeeper: ${profile.housekeeperName}. Visit: ${activeDay}. Meals planned: ${(result.meals||[]).map(m=>m.name).join(", ")}.`,
         (partial) => setGreeting(partial)
       );
@@ -1665,51 +1658,28 @@ Rules: detailedIngredients must include exact quantities. instructions must have
               <div className="greeting-label">✦ Assistant</div>
               {greeting
                 ? <div className={streamingGreet?"streaming":""}>{greeting}</div>
-                : <div style={{color:"var(--ink-faint)",fontSize:14}}>Generate a plan below — I'll pick 3 meals from your Recipe Box and build a task list and shopping list automatically.</div>
+                : <div style={{color:"var(--ink-faint)",fontSize:14}}>Build your task list above, then click Generate Meal Plan — I'll pick 3 meals from your Recipe Box and create a shopping list automatically.</div>
               }
             </div>
 
-            {/* Error display */}
-            {lastError && (
-              <div style={{background:"#fce8e8",border:"1px solid #f0c0c0",borderRadius:"var(--radius-md)",padding:"12px 16px",marginBottom:16,fontSize:13,color:"#8b0000",lineHeight:1.6}}>
-                <div style={{fontWeight:500,marginBottom:4}}>⚠ Error details:</div>
-                <div style={{fontFamily:"monospace",fontSize:12,wordBreak:"break-all"}}>{lastError}</div>
-                <button onClick={() => setLastError("")} style={{marginTop:8,fontSize:11,background:"none",border:"1px solid #f0c0c0",borderRadius:4,padding:"3px 8px",cursor:"pointer",color:"#8b0000"}}>Dismiss</button>
-              </div>
-            )}
-
-            {/* Generate button */}
-            <button className="btn-generate" onClick={generatePlan} disabled={generating}>
-              {generating ? <><div className="spinner"/>Generating {activeDay} plan…</> : `✦ Generate ${activeDay} Plan`}
-            </button>
-
-            {/* Quick-start when no tasks */}
-            {!tasks.length && !generating && (
-              <div style={{marginBottom:18}}>
-                <div style={{fontSize:13,color:"var(--ink-soft)",marginBottom:10}}>Or start the task list yourself:</div>
-                <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-                  <button className="btn btn-outline" onClick={() => { setShowTaskPanel(true); setTaskPanelTab("templates"); }}>📁 Load a template</button>
-                  <button className="btn btn-outline" onClick={() => { setShowTaskPanel(true); setTaskPanelTab("bulk"); }}>📋 Paste a list</button>
-                  <button className="btn btn-outline" onClick={() => { setShowTaskPanel(true); setTaskPanelTab("ai"); }}>✦ AI suggest</button>
-                  <button className="btn btn-outline" onClick={() => { setSelectedLibraryTasks({}); setShowTaskLibrary(true); }}>✓ Create Task List</button>
-                </div>
-              </div>
-            )}
-
-            {/* Tasks */}
-            {tasks.length > 0 && (
-              <div className="section">
-                <div className="section-hd">
-                  <div className="section-title">🧹 Tasks for {profile.housekeeperName}</div>
+            {/* ── Tasks to Be Performed ── */}
+            <div className="section">
+              <div className="section-hd">
+                <div className="section-title">🧹 Tasks to Be Performed</div>
+                {tasks.length > 0 && (
                   <span className="section-sub">{tasks.filter(t=>t.done).length}/{tasks.length} done</span>
-                </div>
-                <div style={{display:"flex",gap:7,marginBottom:9,flexWrap:"wrap"}}>
-                  <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setShowTaskPanel(true); setTaskPanelTab("bulk"); }}>+ Add list</button>
-                  <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setShowTaskPanel(true); setTaskPanelTab("ai"); }}>✦ AI suggest</button>
-                  <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setShowTaskPanel(true); setTaskPanelTab("templates"); }}>📁 Templates</button>
-                  <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setSelectedLibraryTasks({}); setShowTaskLibrary(true); }}>✓ Library</button>
+                )}
+              </div>
+              <div style={{display:"flex",gap:7,marginBottom:tasks.length ? 9 : 0,flexWrap:"wrap"}}>
+                <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setSelectedLibraryTasks({}); setShowTaskLibrary(true); }}>✓ Create Task List</button>
+                <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setShowTaskPanel(true); setTaskPanelTab("templates"); }}>📁 Load a template</button>
+                <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setShowTaskPanel(true); setTaskPanelTab("bulk"); }}>📋 Paste a list</button>
+                <button className="btn btn-outline" style={{fontSize:12,padding:"5px 11px"}} onClick={() => { setShowTaskPanel(true); setTaskPanelTab("ai"); }}>✦ AI suggest</button>
+                {tasks.length > 0 && (
                   <button className="btn btn-danger" style={{fontSize:12,padding:"5px 11px",marginLeft:"auto"}} onClick={() => { if(window.confirm("Clear all tasks?")) setTasks([]); }}>Clear all</button>
-                </div>
+                )}
+              </div>
+              {tasks.length > 0 && (
                 <div className="card">
                   {tasks.map(task => (
                     <div className="task-row" key={task.id}>
@@ -1731,8 +1701,22 @@ Rules: detailedIngredients must include exact quantities. instructions must have
                     <button className="add-btn" onClick={addTask}>+</button>
                   </div>
                 </div>
+              )}
+            </div>
+
+            {/* Error display */}
+            {lastError && (
+              <div style={{background:"#fce8e8",border:"1px solid #f0c0c0",borderRadius:"var(--radius-md)",padding:"12px 16px",marginBottom:16,fontSize:13,color:"#8b0000",lineHeight:1.6}}>
+                <div style={{fontWeight:500,marginBottom:4}}>⚠ Error details:</div>
+                <div style={{fontFamily:"monospace",fontSize:12,wordBreak:"break-all"}}>{lastError}</div>
+                <button onClick={() => setLastError("")} style={{marginTop:8,fontSize:11,background:"none",border:"1px solid #f0c0c0",borderRadius:4,padding:"3px 8px",cursor:"pointer",color:"#8b0000"}}>Dismiss</button>
               </div>
             )}
+
+            {/* Generate Meal Plan button */}
+            <button className="btn-generate" onClick={generatePlan} disabled={generating}>
+              {generating ? <><div className="spinner"/>Generating {activeDay} Meal Plan…</> : `✦ Generate ${activeDay} Meal Plan`}
+            </button>
 
             {/* Meals */}
             {meals.length > 0 && (
