@@ -664,6 +664,12 @@ const STYLES = `
 
   /* ── Toast ── */
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--teal-dark); color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; z-index: 200; animation: toastIn 0.2s ease; box-shadow: var(--shadow-md); }
+  .install-banner { position: fixed; bottom: 0; left: 0; right: 0; background: var(--teal-dark); color: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 12px; z-index: 300; box-shadow: 0 -4px 20px rgba(0,0,0,0.2); animation: toastIn 0.25s ease; }
+  .install-banner-text { flex: 1; font-size: 13.5px; line-height: 1.4; }
+  .install-banner-text strong { display: block; font-size: 14px; margin-bottom: 2px; }
+  .install-banner-btns { display: flex; gap: 8px; flex-shrink: 0; }
+  .install-btn { background: #e9c46a; color: #1a2e2b; border: none; border-radius: 20px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .install-dismiss { background: transparent; color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.3); border-radius: 20px; padding: 7px 12px; font-size: 13px; cursor: pointer; }
   @keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(8px); } }
 
   /* ── Misc ── */
@@ -757,6 +763,8 @@ export default function HouseHelper() {
 
   // ── NEW: PDF/Share state ───────────────────────────────────────────────────
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
   const canNativeShare = typeof navigator !== "undefined" && !!navigator.share;
 
   // ── Persistence ────────────────────────────────────────────────────────────
@@ -769,6 +777,35 @@ export default function HouseHelper() {
   useEffect(() => { save(`hh_greet_${activeDay}`, greeting); }, [greeting, activeDay]);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2600); };
+
+  // ── PWA install prompt ────────────────────────────────────────────────────
+  useEffect(() => {
+    const dismissed = localStorage.getItem("hh_install_dismissed");
+    if (dismissed) return;
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setShowInstallBanner(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === "accepted") {
+      localStorage.setItem("hh_install_dismissed", "1");
+    }
+    setInstallPrompt(null);
+    setShowInstallBanner(false);
+  };
+
+  const dismissInstallBanner = () => {
+    localStorage.setItem("hh_install_dismissed", "1");
+    setShowInstallBanner(false);
+  };
 
   // ── Switch visit day ────────────────────────────────────────────────────────
   const switchDay = (day) => {
@@ -2152,6 +2189,19 @@ Rules: detailedIngredients must include exact quantities. instructions must have
       )}
 
       {toast && <div className="toast">{toast}</div>}
+
+      {showInstallBanner && (
+        <div className="install-banner">
+          <div className="install-banner-text">
+            <strong>Add to Home Screen</strong>
+            Install House Helper for the best experience — works offline too.
+          </div>
+          <div className="install-banner-btns">
+            <button className="install-btn" onClick={handleInstall}>Install</button>
+            <button className="install-dismiss" onClick={dismissInstallBanner}>Not now</button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
