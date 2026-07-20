@@ -2520,6 +2520,7 @@ Rules: detailedIngredients must include exact quantities. instructions must have
                       <div className="mp-footer"><button className="panel-cancel" style={{flex:1}} onClick={() => setShowMealPlanner(false)}>Close</button></div>
                     </>
                   ) : (
+                  <>
                   <div className="mp-body">
                     <input
                       className="mp-search"
@@ -2595,6 +2596,7 @@ Rules: detailedIngredients must include exact quantities. instructions must have
                       onClick={addMealsFromSelection}
                     >Add {selectedCount > 0 ? selectedCount : ""} Meal{selectedCount !== 1 ? "s" : ""} to Plan</button>
                   </div>
+                  </>
                   )}
                 </>
               )}
@@ -2613,6 +2615,7 @@ Rules: detailedIngredients must include exact quantities. instructions must have
                       <div className="mp-footer"><button className="panel-cancel" style={{flex:1}} onClick={() => setShowMealPlanner(false)}>Close</button></div>
                     </>
                   ) : (
+                  <>
                   <div className="mp-body">
                     {mealTemplates.length === 0 && (
                       <div style={{textAlign:"center",color:"var(--ink-faint)",fontSize:13,padding:"24px 0"}}>No saved templates yet.</div>
@@ -2638,6 +2641,7 @@ Rules: detailedIngredients must include exact quantities. instructions must have
                   <div className="mp-footer">
                     <button className="panel-cancel" style={{flex:1}} onClick={() => setShowMealPlanner(false)}>Close</button>
                   </div>
+                  </>
                   )}
                 </>
               )}
