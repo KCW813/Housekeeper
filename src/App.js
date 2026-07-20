@@ -1501,13 +1501,28 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
     setRefreshingShop(false);
   };
 
+  // ── Shared: generate shopping for a given meals list ────────────────────────
+  const generateShoppingForMeals = async (mealsList) => {
+    if (!mealsList.length) return;
+    setRefreshingShop(true);
+    try {
+      const result = await callClaudeJSON(
+        "You are a grocery list assistant. Return ONLY JSON, no markdown.",
+        `Shopping list for: ${mealsList.map(m=>m.name).join(", ")}. Family: ${profile.familyMembers}. Return: { "shopping":["item with quantity",...] } — 10-14 items.`
+      );
+      setShopping(result.shopping || []);
+      setCheckedShop({});
+    } catch { showToast("Meals set — shopping list could not be generated"); }
+    setRefreshingShop(false);
+  };
+
   // ── Meal template management ────────────────────────────────────────────────
   const saveMealTemplate = (name, recipeNames) => {
     if (!name.trim()) { showToast("Enter a template name"); return; }
     if (!recipeNames.length) { showToast("Select at least one recipe"); return; }
     const tmpl = { id: Date.now().toString(), name: name.trim(), recipes: recipeNames };
     setMealTemplates(ts => [...ts, tmpl]);
-    showToast(`"${name.trim()}" saved`);
+    showToast(`Template saved: ${name.trim()} ✓`);
   };
 
   const deleteMealTemplate = (id) => {
@@ -1531,48 +1546,25 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
     setShowSaveMealTemplate(false);
     setNewMealTemplateName("");
     showToast(`${newMeals.length} meal${newMeals.length !== 1 ? "s" : ""} added to plan`);
-    if (newMeals.length) {
-      setRefreshingShop(true);
-      try {
-        const result = await callClaudeJSON(
-          "You are a grocery list assistant. Return ONLY JSON, no markdown.",
-          `Shopping list for: ${newMeals.map(m=>m.name).join(", ")}. Family: ${profile.familyMembers}. Return: { "shopping":["item with quantity",...] } — 10-14 items.`
-        );
-        setShopping(result.shopping || []);
-        setCheckedShop({});
-      } catch { showToast("Meals added — shopping list could not be generated"); }
-      setRefreshingShop(false);
-    }
+    await generateShoppingForMeals(newMeals);
   };
 
   const loadMealTemplate = async (template) => {
-    const DAYS_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-    const weekdays = DAYS_SHORT.filter(d => !["Sat","Sun"].includes(d)); // Tue–Fri for assignment
+    const WEEKDAYS = ["Tue","Wed","Thu","Fri"];
     const newMeals = template.recipes.map((recipeName, i) => {
       const rec = recipes.find(r => r.name.toLowerCase() === recipeName.toLowerCase());
       return {
         id: Date.now().toString() + Math.random(),
-        day: weekdays[i % weekdays.length],
+        day: WEEKDAYS[i % WEEKDAYS.length],
         name: rec ? rec.name : recipeName,
         category: rec?.category || "",
         notes: rec?.notes || "",
       };
     });
     setMeals(newMeals);
+    setShowMealPlanner(false);
     showToast(`Loaded "${template.name}"`);
-    // Generate shopping list for the loaded meals
-    if (newMeals.length) {
-      setRefreshingShop(true);
-      try {
-        const result = await callClaudeJSON(
-          "You are a grocery list assistant. Return ONLY JSON, no markdown.",
-          `Shopping list for: ${newMeals.map(m=>m.name).join(", ")}. Family: ${profile.familyMembers}. Return: { "shopping":["item with quantity",...] } — 10-14 items.`
-        );
-        setShopping(result.shopping || []);
-        setCheckedShop({});
-      } catch { showToast("Meals loaded — shopping list could not be generated"); }
-      setRefreshingShop(false);
-    }
+    await generateShoppingForMeals(newMeals);
   };
 
   // ── Recipe CRUD ─────────────────────────────────────────────────────────────
@@ -1823,7 +1815,7 @@ Rules: detailedIngredients must include exact quantities. instructions must have
               <div className="greeting-label">✦ Assistant</div>
               {greeting
                 ? <div className={streamingGreet?"streaming":""}>{greeting}</div>
-                : <div style={{color:"var(--ink-faint)",fontSize:14}}>Build your task list above, then click Generate Meal Plan — I'll pick 3 meals from your Recipe Box and create a shopping list automatically.</div>
+                : <div style={{color:"var(--ink-faint)",fontSize:14}}>Build your task list above, then use the Meal Plan section below to select meals, load a template, or let AI suggest — I'll generate the shopping list automatically.</div>
               }
             </div>
 
@@ -1921,7 +1913,7 @@ Rules: detailedIngredients must include exact quantities. instructions must have
             )}
 
             {/* Shopping */}
-            {shopping.length > 0 && (
+            {(shopping.length > 0 || refreshingShop) && (
               <div className="section">
                 <div className="section-hd">
                   <div className="section-title">🛒 Shopping List</div>
@@ -1929,16 +1921,22 @@ Rules: detailedIngredients must include exact quantities. instructions must have
                     {refreshingShop ? "Refreshing…" : "↺ Refresh"}
                   </button>
                 </div>
-                <div className="card">
-                  <div className="shop-grid">
-                    {shopping.map((item,i) => (
-                      <div key={i} className={`shop-item ${checkedShop[i]?"checked":""}`} onClick={() => setCheckedShop(c=>({...c,[i]:!c[i]}))}>
-                        <span className="shop-dot"/>
-                        {item}
-                      </div>
-                    ))}
+                {refreshingShop ? (
+                  <div style={{display:"flex",alignItems:"center",gap:9,padding:"18px 0",color:"var(--ink-soft)",fontSize:13}}>
+                    <div className="spinner spinner-teal" style={{width:14,height:14,borderWidth:2}}/>Generating shopping list…
                   </div>
-                </div>
+                ) : (
+                  <div className="card">
+                    <div className="shop-grid">
+                      {shopping.map((item,i) => (
+                        <div key={i} className={`shop-item ${checkedShop[i]?"checked":""}`} onClick={() => setCheckedShop(c=>({...c,[i]:!c[i]}))}>
+                          <span className="shop-dot"/>
+                          {item}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2518,6 +2516,17 @@ Rules: detailedIngredients must include exact quantities. instructions must have
               {/* ── SELECT FROM LIST ── */}
               {mealPlannerTab === "select" && (
                 <>
+                  {recipes.length === 0 ? (
+                    <>
+                      <div className="mp-body" style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center",gap:12}}>
+                        <div style={{fontSize:32}}>🍽</div>
+                        <div style={{fontSize:15,fontWeight:600,color:"var(--ink)"}}>Your Recipe Box is empty</div>
+                        <div style={{fontSize:13,color:"var(--ink-soft)",lineHeight:1.5}}>Add some recipes first in the Recipe Box tab, then come back here to build your meal plan.</div>
+                        <button className="panel-save" style={{marginTop:8,padding:"9px 22px"}} onClick={() => { setShowMealPlanner(false); setActiveTab("recipes"); }}>Go to Recipe Box →</button>
+                      </div>
+                      <div className="mp-footer"><button className="panel-cancel" style={{flex:1}} onClick={() => setShowMealPlanner(false)}>Close</button></div>
+                    </>
+                  ) : (
                   <div className="mp-body">
                     <input
                       className="mp-search"
@@ -2593,12 +2602,24 @@ Rules: detailedIngredients must include exact quantities. instructions must have
                       onClick={addMealsFromSelection}
                     >Add {selectedCount > 0 ? selectedCount : ""} Meal{selectedCount !== 1 ? "s" : ""} to Plan</button>
                   </div>
+                  )}
                 </>
               )}
 
               {/* ── LOAD TEMPLATE ── */}
               {mealPlannerTab === "template" && (
                 <>
+                  {recipes.length === 0 ? (
+                    <>
+                      <div className="mp-body" style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center",gap:12}}>
+                        <div style={{fontSize:32}}>🍽</div>
+                        <div style={{fontSize:15,fontWeight:600,color:"var(--ink)"}}>Your Recipe Box is empty</div>
+                        <div style={{fontSize:13,color:"var(--ink-soft)",lineHeight:1.5}}>Add some recipes first in the Recipe Box tab, then come back here to build your meal plan.</div>
+                        <button className="panel-save" style={{marginTop:8,padding:"9px 22px"}} onClick={() => { setShowMealPlanner(false); setActiveTab("recipes"); }}>Go to Recipe Box →</button>
+                      </div>
+                      <div className="mp-footer"><button className="panel-cancel" style={{flex:1}} onClick={() => setShowMealPlanner(false)}>Close</button></div>
+                    </>
+                  ) : (
                   <div className="mp-body">
                     {mealTemplates.length === 0 && (
                       <div style={{textAlign:"center",color:"var(--ink-faint)",fontSize:13,padding:"24px 0"}}>No saved templates yet.</div>
@@ -2624,6 +2645,7 @@ Rules: detailedIngredients must include exact quantities. instructions must have
                   <div className="mp-footer">
                     <button className="panel-cancel" style={{flex:1}} onClick={() => setShowMealPlanner(false)}>Close</button>
                   </div>
+                  )}
                 </>
               )}
 
