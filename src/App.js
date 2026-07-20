@@ -332,6 +332,12 @@ const DEFAULT_TEMPLATES = [
   { id: "t3", name: "Summer Extras", tasks: ["Wipe down patio furniture", "Clean ceiling fans throughout house", "Wipe sliding glass doors inside and out", "Sweep and hose down patio"] },
 ];
 
+const DEFAULT_MEAL_TEMPLATES = [
+  { id: "mt1", name: "Light Week",        recipes: ["Sheet Pan Salmon", "Chicken Tacos", "Beef Stir Fry"] },
+  { id: "mt2", name: "Comfort Food Week", recipes: ["Pasta Bolognese", "BBQ Pulled Pork", "Chicken Soup"] },
+  { id: "mt3", name: "Family Favorites",  recipes: ["Lemon Herb Roasted Chicken", "Chicken Tacos", "Pasta Bolognese"] },
+];
+
 const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const CATEGORIES = ["Poultry","Beef","Pork","Fish","Pasta","Mexican","Asian","Soup","Salad","Vegetarian","Other"];
 
@@ -892,6 +898,17 @@ export default function HouseHelper() {
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeFilter, setRecipeFilter] = useState("All");
 
+  // ── Meal templates ─────────────────────────────────────────────────────────
+  const [mealTemplates, setMealTemplates] = useState(() => load("hh_meal_templates", DEFAULT_MEAL_TEMPLATES));
+
+  // ── Meal planner UI state ───────────────────────────────────────────────────
+  const [showMealPlanner, setShowMealPlanner]           = useState(false);
+  const [mealPlannerTab, setMealPlannerTab]             = useState("select");
+  const [mealSearchQuery, setMealSearchQuery]           = useState("");
+  const [selectedMealIds, setSelectedMealIds]           = useState({});
+  const [showSaveMealTemplate, setShowSaveMealTemplate] = useState(false);
+  const [newMealTemplateName, setNewMealTemplateName]   = useState("");
+
   // ── NEW: Template editing state ────────────────────────────────────────────
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [editTmplName, setEditTmplName]       = useState("");
@@ -910,6 +927,7 @@ export default function HouseHelper() {
   useEffect(() => { save("hh_profile", profile); }, [profile]);
   useEffect(() => { save("hh_recipes", recipes); }, [recipes]);
   useEffect(() => { save("hh_templates", templates); }, [templates]);
+  useEffect(() => { save("hh_meal_templates", mealTemplates); }, [mealTemplates]);
   useEffect(() => { save(`hh_tasks_${activeDay}`, tasks); }, [tasks, activeDay]);
   useEffect(() => { save(`hh_meals_${activeDay}`, meals); }, [meals, activeDay]);
   useEffect(() => { save(`hh_shop_${activeDay}`, shopping); }, [shopping, activeDay]);
@@ -1440,6 +1458,49 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
       showToast("Shopping list refreshed");
     } catch { showToast("Could not refresh — try again"); }
     setRefreshingShop(false);
+  };
+
+  // ── Meal template management ────────────────────────────────────────────────
+  const saveMealTemplate = (name, recipeNames) => {
+    if (!name.trim()) { showToast("Enter a template name"); return; }
+    if (!recipeNames.length) { showToast("Select at least one recipe"); return; }
+    const tmpl = { id: Date.now().toString(), name: name.trim(), recipes: recipeNames };
+    setMealTemplates(ts => [...ts, tmpl]);
+    showToast(`"${name.trim()}" saved`);
+  };
+
+  const deleteMealTemplate = (id) => {
+    setMealTemplates(ts => ts.filter(t => t.id !== id));
+  };
+
+  const loadMealTemplate = async (template) => {
+    const DAYS_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const weekdays = DAYS_SHORT.filter(d => !["Sat","Sun"].includes(d)); // Tue–Fri for assignment
+    const newMeals = template.recipes.map((recipeName, i) => {
+      const rec = recipes.find(r => r.name.toLowerCase() === recipeName.toLowerCase());
+      return {
+        id: Date.now().toString() + Math.random(),
+        day: weekdays[i % weekdays.length],
+        name: rec ? rec.name : recipeName,
+        category: rec?.category || "",
+        notes: rec?.notes || "",
+      };
+    });
+    setMeals(newMeals);
+    showToast(`Loaded "${template.name}"`);
+    // Generate shopping list for the loaded meals
+    if (newMeals.length) {
+      setRefreshingShop(true);
+      try {
+        const result = await callClaudeJSON(
+          "You are a grocery list assistant. Return ONLY JSON, no markdown.",
+          `Shopping list for: ${newMeals.map(m=>m.name).join(", ")}. Family: ${profile.familyMembers}. Return: { "shopping":["item with quantity",...] } — 10-14 items.`
+        );
+        setShopping(result.shopping || []);
+        setCheckedShop({});
+      } catch { showToast("Meals loaded — shopping list could not be generated"); }
+      setRefreshingShop(false);
+    }
   };
 
   // ── Recipe CRUD ─────────────────────────────────────────────────────────────
