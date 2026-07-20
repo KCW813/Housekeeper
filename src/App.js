@@ -774,6 +774,45 @@ const STYLES = `
   .tl-task-text { font-size: 13px; color: var(--ink); line-height: 1.4; }
   .tl-footer { padding: 14px 16px; border-top: 1px solid var(--border); display: flex; gap: 9px; flex-shrink: 0; background: #fff; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
 
+  /* ── Meal Planner Panel ── */
+  .mp-panel { background: var(--cream); border-radius: var(--radius-lg); width: 100%; max-width: 600px; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(18,43,40,0.28); }
+  .mp-header { background: linear-gradient(135deg, #122b28 0%, #1a5c57 50%, var(--teal-mid) 100%); padding: 20px 24px 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; flex-shrink: 0; position: relative; }
+  .mp-title { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 600; color: #fff; margin-bottom: 14px; padding-right: 36px; }
+  .mp-close { position: absolute; top: 14px; right: 14px; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .mp-close:hover { background: rgba(255,255,255,0.28); }
+  .mp-tabs { display: flex; gap: 0; }
+  .mp-tab { flex: 1; padding: 9px 6px; font-family: 'DM Sans', sans-serif; font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,0.65); background: transparent; border: none; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.15s; text-align: center; }
+  .mp-tab:hover { color: rgba(255,255,255,0.9); }
+  .mp-tab.active { color: #fff; border-bottom-color: #e9c46a; }
+  .mp-body { overflow-y: auto; flex: 1; padding: 16px; }
+  .mp-search { width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 13px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); outline: none; margin-bottom: 12px; box-sizing: border-box; }
+  .mp-search:focus { border-color: var(--teal-mid); }
+  .mp-recipe-card { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-md); margin-bottom: 7px; cursor: pointer; transition: all 0.12s; background: #fff; }
+  .mp-recipe-card:hover { border-color: var(--teal-light); background: var(--teal-faint); }
+  .mp-recipe-card.selected { border-color: var(--teal-mid); background: var(--teal-faint); }
+  .mp-recipe-card.dimmed { opacity: 0.4; cursor: default; pointer-events: none; }
+  .mp-recipe-check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #fff; transition: all 0.12s; }
+  .mp-recipe-check.checked { background: var(--teal-mid); border-color: var(--teal-mid); }
+  .mp-recipe-check.checked::after { content: "✓"; color: #fff; font-size: 10px; font-weight: 700; }
+  .mp-recipe-name { font-size: 13.5px; font-weight: 500; color: var(--ink); flex: 1; }
+  .mp-recipe-meta { font-size: 11px; color: var(--ink-faint); }
+  .mp-counter { font-size: 12px; font-weight: 600; color: var(--teal-dark); background: var(--teal-faint); border: 1px solid var(--teal-pale); border-radius: 12px; padding: 3px 11px; display: inline-block; margin-bottom: 10px; }
+  .mp-dimmed-msg { font-size: 12px; color: var(--ink-faint); font-style: italic; margin-bottom: 10px; }
+  .mp-save-tmpl-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; padding: 10px 12px; background: var(--teal-faint); border: 1px solid var(--teal-pale); border-radius: var(--radius-sm); }
+  .mp-save-tmpl-input { flex: 1; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); outline: none; }
+  .mp-save-tmpl-input:focus { border-color: var(--teal-mid); }
+  .mp-tmpl-card { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 9px; background: #fff; }
+  .mp-tmpl-name { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 5px; }
+  .mp-tmpl-meals { font-size: 12px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 8px; }
+  .mp-tmpl-actions { display: flex; gap: 7px; }
+  .mp-footer { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 9px; flex-shrink: 0; background: #fff; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+  .mp-open-btns { display: flex; gap: 7px; margin-bottom: 14px; }
+  .mp-open-btn { flex: 1; padding: 9px 8px; font-family: 'DM Sans', sans-serif; font-size: 12.5px; font-weight: 500; color: var(--teal-dark); background: #fff; border: 1.5px solid var(--teal-light); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s; text-align: center; }
+  .mp-open-btn:hover { background: var(--teal-faint); border-color: var(--teal-mid); }
+  .mp-ai-note { font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 14px; padding: 11px 13px; background: var(--teal-faint); border-left: 3px solid var(--teal-light); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+  .mp-ai-input { width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 13px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); outline: none; margin-bottom: 14px; box-sizing: border-box; }
+  .mp-ai-input:focus { border-color: var(--teal-mid); }
+
   /* ── Recipe Detail Modal ── */
   .recipe-detail-panel { background: var(--cream); border-radius: var(--radius-lg); width: 100%; max-width: 620px; max-height: 92vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(18,43,40,0.28); display: flex; flex-direction: column; }
   .recipe-detail-header { background: linear-gradient(135deg, #122b28 0%, #1a5c57 50%, var(--teal-mid) 100%); padding: 22px 24px 18px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; position: relative; flex-shrink: 0; }
@@ -908,6 +947,7 @@ export default function HouseHelper() {
   const [selectedMealIds, setSelectedMealIds]           = useState({});
   const [showSaveMealTemplate, setShowSaveMealTemplate] = useState(false);
   const [newMealTemplateName, setNewMealTemplateName]   = useState("");
+  const [aiMealRequest, setAiMealRequest]               = useState("");
 
   // ── NEW: Template editing state ────────────────────────────────────────────
   const [editingTemplate, setEditingTemplate] = useState(null);
@@ -982,11 +1022,12 @@ export default function HouseHelper() {
   const mealHistory = meals.length ? meals.map(m => m.name).join(", ") : "";
 
   // ── Generate full plan ──────────────────────────────────────────────────────
-  const generatePlan = async () => {
+  const generatePlan = async (specialRequest = "") => {
     setGenerating(true);
     setGreeting("");
     setStreamingGreet(true);
     setCheckedShop({});
+    setShowMealPlanner(false);
     try {
       const result = await callClaudeJSON(
         "You are a household management assistant. Return ONLY valid JSON, no markdown.",
@@ -996,7 +1037,7 @@ Household: ${profile.familyMembers}
 Housekeeper: ${profile.housekeeperName}
 Today: ${todayName}
 Dietary notes: ${profile.dietaryNotes}
-Extra notes: ${profile.extraNotes}
+Extra notes: ${profile.extraNotes}${specialRequest ? `\nSpecial request: ${specialRequest}` : ""}
 
 RECIPE BOX (choose 3 meals from this list to prepare):
 ${recipeContext()}
@@ -1473,6 +1514,37 @@ Return: { "name":"...", "category":"...", "notes":"brief prep note" }`
     setMealTemplates(ts => ts.filter(t => t.id !== id));
   };
 
+  const addMealsFromSelection = async () => {
+    const WEEKDAYS = ["Tue","Wed","Thu","Fri"];
+    const selected = recipes.filter(r => selectedMealIds[r.id]);
+    const newMeals = selected.map((r, i) => ({
+      id: Date.now().toString() + Math.random(),
+      day: WEEKDAYS[i % WEEKDAYS.length],
+      name: r.name,
+      category: r.category || "",
+      notes: r.notes || "",
+    }));
+    setMeals(newMeals);
+    setShowMealPlanner(false);
+    setSelectedMealIds({});
+    setMealSearchQuery("");
+    setShowSaveMealTemplate(false);
+    setNewMealTemplateName("");
+    showToast(`${newMeals.length} meal${newMeals.length !== 1 ? "s" : ""} added to plan`);
+    if (newMeals.length) {
+      setRefreshingShop(true);
+      try {
+        const result = await callClaudeJSON(
+          "You are a grocery list assistant. Return ONLY JSON, no markdown.",
+          `Shopping list for: ${newMeals.map(m=>m.name).join(", ")}. Family: ${profile.familyMembers}. Return: { "shopping":["item with quantity",...] } — 10-14 items.`
+        );
+        setShopping(result.shopping || []);
+        setCheckedShop({});
+      } catch { showToast("Meals added — shopping list could not be generated"); }
+      setRefreshingShop(false);
+    }
+  };
+
   const loadMealTemplate = async (template) => {
     const DAYS_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
     const weekdays = DAYS_SHORT.filter(d => !["Sat","Sun"].includes(d)); // Tue–Fri for assignment
@@ -1808,10 +1880,17 @@ Rules: detailedIngredients must include exact quantities. instructions must have
               </div>
             )}
 
-            {/* Generate Meal Plan button */}
-            <button className="btn-generate" onClick={generatePlan} disabled={generating}>
-              {generating ? <><div className="spinner"/>Generating {activeDay} Meal Plan…</> : `✦ Generate ${activeDay} Meal Plan`}
-            </button>
+            {/* ── Meal Plan section ── */}
+            <div className="section">
+              <div className="section-hd">
+                <div className="section-title">🍽 Meal Plan</div>
+              </div>
+              <div className="mp-open-btns">
+                <button className="mp-open-btn" onClick={() => { setMealPlannerTab("select"); setMealSearchQuery(""); setSelectedMealIds({}); setShowSaveMealTemplate(false); setNewMealTemplateName(""); setShowMealPlanner(true); }}>🔍 Select from List</button>
+                <button className="mp-open-btn" onClick={() => { setMealPlannerTab("template"); setShowMealPlanner(true); }}>📁 Load Template</button>
+                <button className="mp-open-btn" onClick={() => { setMealPlannerTab("ai"); setShowMealPlanner(true); }}>✦ AI Suggest</button>
+              </div>
+            </div>
 
             {/* Meals */}
             {meals.length > 0 && (
@@ -2407,6 +2486,176 @@ Rules: detailedIngredients must include exact quantities. instructions must have
           </div>
         </div>
       )}
+
+      {/* ═══ MEAL PLANNER PANEL ═══ */}
+      {showMealPlanner && (() => {
+        const q = mealSearchQuery.toLowerCase();
+        const filteredRecipes = recipes.filter(r =>
+          !q ||
+          r.name.toLowerCase().includes(q) ||
+          (r.category||"").toLowerCase().includes(q) ||
+          (r.notes||"").toLowerCase().includes(q) ||
+          (r.ingredients||"").toLowerCase().includes(q)
+        );
+        const selectedCount = Object.values(selectedMealIds).filter(Boolean).length;
+        const maxReached = selectedCount >= 3;
+
+        return (
+          <div className="overlay" onClick={e => e.target === e.currentTarget && setShowMealPlanner(false)}>
+            <div className="mp-panel">
+
+              {/* Header */}
+              <div className="mp-header">
+                <button className="mp-close" onClick={() => setShowMealPlanner(false)}>×</button>
+                <div className="mp-title">Plan Meals for {activeDay}</div>
+                <div className="mp-tabs">
+                  {[["select","🔍 Select from List"],["template","📁 Load Template"],["ai","✦ AI Suggest"]].map(([val, label]) => (
+                    <button key={val} className={`mp-tab ${mealPlannerTab===val?"active":""}`} onClick={() => setMealPlannerTab(val)}>{label}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── SELECT FROM LIST ── */}
+              {mealPlannerTab === "select" && (
+                <>
+                  <div className="mp-body">
+                    <input
+                      className="mp-search"
+                      type="text"
+                      placeholder="Search recipes by name, ingredient, or category…"
+                      value={mealSearchQuery}
+                      onChange={e => setMealSearchQuery(e.target.value)}
+                      autoFocus
+                    />
+                    <div className="mp-counter">{selectedCount} of 3 meals selected</div>
+                    {maxReached && <div className="mp-dimmed-msg">3 meals selected — deselect one to choose a different meal</div>}
+                    {filteredRecipes.map(r => {
+                      const isSelected = !!selectedMealIds[r.id];
+                      const isDimmed = maxReached && !isSelected;
+                      return (
+                        <div
+                          key={r.id}
+                          className={`mp-recipe-card${isSelected?" selected":""}${isDimmed?" dimmed":""}`}
+                          onClick={() => !isDimmed && setSelectedMealIds(prev => ({...prev, [r.id]: !prev[r.id]}))}
+                        >
+                          <div className={`mp-recipe-check${isSelected?" checked":""}`} />
+                          <div style={{flex:1}}>
+                            <div className="mp-recipe-name">{r.name}</div>
+                            <div className="mp-recipe-meta">{r.category}{r.cookTime ? ` · ${r.cookTime}` : ""}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {filteredRecipes.length === 0 && (
+                      <div style={{textAlign:"center",color:"var(--ink-faint)",fontSize:13,padding:"24px 0"}}>No recipes match "{mealSearchQuery}"</div>
+                    )}
+
+                    {/* Save as template */}
+                    {selectedCount >= 2 && (
+                      <div style={{marginTop:12}}>
+                        {!showSaveMealTemplate ? (
+                          <button
+                            className="btn btn-outline btn-full"
+                            style={{fontSize:12,borderStyle:"dashed",color:"var(--teal-mid)",borderColor:"var(--teal-light)"}}
+                            onClick={() => setShowSaveMealTemplate(true)}
+                          >💾 Save as Template</button>
+                        ) : (
+                          <div className="mp-save-tmpl-row">
+                            <input
+                              className="mp-save-tmpl-input"
+                              placeholder="Template name…"
+                              value={newMealTemplateName}
+                              onChange={e => setNewMealTemplateName(e.target.value)}
+                              onKeyDown={e => { if (e.key==="Enter") { saveMealTemplate(newMealTemplateName, recipes.filter(r=>selectedMealIds[r.id]).map(r=>r.name)); setShowSaveMealTemplate(false); setNewMealTemplateName(""); }}}
+                              autoFocus
+                            />
+                            <button
+                              className="panel-save"
+                              style={{flex:"0 0 auto",padding:"7px 14px",fontSize:12}}
+                              onClick={() => { saveMealTemplate(newMealTemplateName, recipes.filter(r=>selectedMealIds[r.id]).map(r=>r.name)); setShowSaveMealTemplate(false); setNewMealTemplateName(""); }}
+                            >Save</button>
+                            <button
+                              className="panel-cancel"
+                              style={{flex:"0 0 auto",padding:"7px 10px",fontSize:12}}
+                              onClick={() => { setShowSaveMealTemplate(false); setNewMealTemplateName(""); }}
+                            >✕</button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="mp-footer">
+                    <button className="panel-cancel" onClick={() => setShowMealPlanner(false)}>Cancel</button>
+                    <button
+                      className="panel-save"
+                      disabled={selectedCount === 0}
+                      style={selectedCount === 0 ? {opacity:0.45} : {}}
+                      onClick={addMealsFromSelection}
+                    >Add {selectedCount > 0 ? selectedCount : ""} Meal{selectedCount !== 1 ? "s" : ""} to Plan</button>
+                  </div>
+                </>
+              )}
+
+              {/* ── LOAD TEMPLATE ── */}
+              {mealPlannerTab === "template" && (
+                <>
+                  <div className="mp-body">
+                    {mealTemplates.length === 0 && (
+                      <div style={{textAlign:"center",color:"var(--ink-faint)",fontSize:13,padding:"24px 0"}}>No saved templates yet.</div>
+                    )}
+                    {mealTemplates.map(tmpl => (
+                      <div className="mp-tmpl-card" key={tmpl.id}>
+                        <div className="mp-tmpl-name">{tmpl.name}</div>
+                        <div className="mp-tmpl-meals">{tmpl.recipes.join(" · ")}</div>
+                        <div className="mp-tmpl-actions">
+                          <button className="panel-save" style={{flex:1,fontSize:12,padding:"7px"}} onClick={() => loadMealTemplate(tmpl)}>Load</button>
+                          <button
+                            className="panel-cancel"
+                            style={{flex:"0 0 auto",fontSize:12,padding:"7px 12px",color:"#b33"}}
+                            onClick={() => { if(window.confirm(`Delete "${tmpl.name}"?`)) { deleteMealTemplate(tmpl.id); showToast("Template deleted"); } }}
+                          >Delete</button>
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{fontSize:12,color:"var(--ink-faint)",fontStyle:"italic",marginTop:8,textAlign:"center"}}>
+                      You can save new templates from the Select from List tab.
+                    </div>
+                  </div>
+                  <div className="mp-footer">
+                    <button className="panel-cancel" style={{flex:1}} onClick={() => setShowMealPlanner(false)}>Close</button>
+                  </div>
+                </>
+              )}
+
+              {/* ── AI SUGGEST ── */}
+              {mealPlannerTab === "ai" && (
+                <>
+                  <div className="mp-body">
+                    <div className="mp-ai-note">
+                      The AI will choose 3 meals from your Recipe Box based on your family preferences and dietary notes.
+                    </div>
+                    <label style={{fontSize:12,fontWeight:600,color:"var(--ink-soft)",display:"block",marginBottom:6}}>Any special requests this week? <span style={{fontWeight:400}}>(optional)</span></label>
+                    <input
+                      className="mp-ai-input"
+                      placeholder="e.g. something easy, no pasta this week…"
+                      value={aiMealRequest}
+                      onChange={e => setAiMealRequest(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && !generating && generatePlan(aiMealRequest)}
+                    />
+                    <button className="btn-generate" style={{marginBottom:0}} onClick={() => generatePlan(aiMealRequest)} disabled={generating}>
+                      {generating ? <><div className="spinner"/>Generating meal plan…</> : `✦ Generate ${activeDay} Meal Plan`}
+                    </button>
+                  </div>
+                  <div className="mp-footer">
+                    <button className="panel-cancel" style={{flex:1}} onClick={() => setShowMealPlanner(false)}>Close</button>
+                  </div>
+                </>
+              )}
+
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ═══ TASK LIBRARY PANEL ═══ */}
       {showTaskLibrary && (
