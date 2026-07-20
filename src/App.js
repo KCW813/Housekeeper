@@ -1766,7 +1766,7 @@ Rules: detailedIngredients must include exact quantities. instructions must have
           <div className="header-glow" />
           <div className="header-gold-bar" />
           <div className="header-brand">
-            <h1>House Helper</h1>
+            <h1>Jen's Planner</h1>
             <p>Housekeeper Prep Assistant</p>
           </div>
           <div className="header-actions">
@@ -1873,16 +1873,9 @@ Rules: detailedIngredients must include exact quantities. instructions must have
             )}
 
             {/* ── Meal Plan section ── */}
-            <div className="section">
-              <div className="section-hd">
-                <div className="section-title">🍽 Meal Plan</div>
-              </div>
-              <div className="mp-open-btns">
-                <button className="mp-open-btn" onClick={() => { setMealPlannerTab("select"); setMealSearchQuery(""); setSelectedMealIds({}); setShowSaveMealTemplate(false); setNewMealTemplateName(""); setShowMealPlanner(true); }}>🔍 Select from List</button>
-                <button className="mp-open-btn" onClick={() => { setMealPlannerTab("template"); setShowMealPlanner(true); }}>📁 Load Template</button>
-                <button className="mp-open-btn" onClick={() => { setMealPlannerTab("ai"); setShowMealPlanner(true); }}>✦ AI Suggest</button>
-              </div>
-            </div>
+            <button className="btn-create-tasks" onClick={() => { setMealPlannerTab("select"); setMealSearchQuery(""); setSelectedMealIds({}); setShowSaveMealTemplate(false); setNewMealTemplateName(""); setShowMealPlanner(true); }}>
+              🍽 Create Meal Plan
+            </button>
 
             {/* Meals */}
             {meals.length > 0 && (
@@ -2772,7 +2765,7 @@ Rules: detailedIngredients must include exact quantities. instructions must have
         <div className="install-banner">
           <div className="install-banner-text">
             <strong>Add to Home Screen</strong>
-            Install House Helper for the best experience — works offline too.
+            Install Jen's Planner for the best experience — works offline too.
           </div>
           <div className="install-banner-btns">
             <button className="install-btn" onClick={handleInstall}>Install</button>

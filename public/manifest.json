@@ -1,6 +1,6 @@
 {
-  "name": "House Helper",
-  "short_name": "House Helper",
+  "name": "Jen's Planner",
+  "short_name": "Jen's Planner",
   "description": "AI-powered housekeeper preparation assistant",
   "start_url": "/",
   "display": "standalone",
