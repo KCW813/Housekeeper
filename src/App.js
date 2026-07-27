@@ -756,6 +756,40 @@ const STYLES = `
   .print-shop-item { font-size: 13px; color: var(--ink); padding: 4px 0; display: flex; gap: 8px; align-items: center; }
   .print-shop-item::before { content: "○"; color: var(--teal-mid); font-size: 10px; }
 
+  /* ── Print media query ── */
+  @media print {
+    @page { margin: 2.5cm; size: portrait; }
+    /* Hide everything */
+    body * { visibility: hidden; }
+    /* Show only the print panel and all its descendants */
+    body.is-printing .print-root,
+    body.is-printing .print-root * { visibility: visible; }
+    /* Position the print panel to cover the page */
+    body.is-printing .print-root {
+      position: fixed; top: 0; left: 0; width: 100%; height: auto;
+      max-width: 100% !important; max-height: none !important;
+      border-radius: 0 !important; box-shadow: none !important;
+      background: #fff !important; overflow: visible !important;
+      padding: 0 !important; margin: 0 !important;
+    }
+    /* Hide the action buttons even though they're inside print-root */
+    body.is-printing .print-actions { visibility: hidden !important; height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; border: none !important; }
+    /* Typography */
+    .print-hd h2 { font-size: 18pt; }
+    .print-hd p { font-size: 10pt; }
+    .print-section h3 { font-size: 13pt; }
+    .print-task { font-size: 11pt; }
+    .print-shop-item { font-size: 11pt; }
+    /* Avoid mid-item page breaks */
+    .print-task, .print-meal, .print-shop-item { break-inside: avoid; page-break-inside: avoid; }
+    .print-section { break-inside: avoid; page-break-inside: avoid; }
+    /* Preserve teal colors for color printing */
+    .print-task::before { color: #1e6e69; }
+    .print-shop-item::before { color: #1e6e69; }
+    .print-meal-day { color: #1e6e69; }
+    .print-meal-details-label { color: #1e6e69; }
+  }
+
   /* ── Task Library Panel ── */
   .tl-panel { background: var(--cream); border-radius: var(--radius-lg); width: 100%; max-width: 580px; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(18,43,40,0.28); }
   .tl-header { background: linear-gradient(135deg, #122b28 0%, #1a5c57 50%, var(--teal-mid) 100%); padding: 20px 24px 16px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; flex-shrink: 0; }
@@ -2466,7 +2500,7 @@ Rules: detailedIngredients must include exact quantities. instructions must have
       {/* ═══ PRINT SHEET ═══ */}
       {showPrint && (
         <div className="overlay" onClick={e => e.target===e.currentTarget && setShowPrint(false)}>
-          <div className="print-panel">
+          <div className="print-panel print-root">
             <div className="print-hd">
               <h2>Instructions for {profile.housekeeperName} — {activeDay}</h2>
               <p>{today.toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</p>
@@ -2528,7 +2562,7 @@ Rules: detailedIngredients must include exact quantities. instructions must have
             )}
             {greeting && <div style={{fontSize:12,color:"var(--ink-soft)",fontStyle:"italic",marginTop:10,borderTop:"1px solid var(--border)",paddingTop:10}}>{greeting}</div>}
 
-            <div style={{display:"flex",gap:9,marginTop:18,borderTop:"1px solid var(--border)",paddingTop:14}}>
+            <div className="print-actions" style={{display:"flex",gap:9,marginTop:18,borderTop:"1px solid var(--border)",paddingTop:14}}>
               <button className="panel-cancel" onClick={() => setShowPrint(false)}>Close</button>
               <button
                 className="btn-share"
@@ -2541,7 +2575,15 @@ Rules: detailedIngredients must include exact quantities. instructions must have
                   : canNativeShare ? "⬆ Share as PDF" : "⬇ Download PDF"
                 }
               </button>
-              <button className="panel-save" onClick={() => window.print()} style={{flex:"0 0 auto",padding:"10px 16px"}}>
+              <button className="panel-save" onClick={() => {
+                document.body.classList.add("is-printing");
+                window.print();
+                const cleanup = () => {
+                  document.body.classList.remove("is-printing");
+                  window.removeEventListener("afterprint", cleanup);
+                };
+                window.addEventListener("afterprint", cleanup);
+              }} style={{flex:"0 0 auto",padding:"10px 16px"}}>
                 🖨 Print
               </button>
             </div>
