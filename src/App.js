@@ -758,77 +758,87 @@ const STYLES = `
 
   /* ── Print media query ── */
   @media print {
-    @page { margin: 2.5cm; size: portrait; }
+    /* Slightly smaller top margin so content starts near the top of page 1 */
+    @page { margin: 1.5cm 2cm 2cm 2cm; size: letter portrait; }
 
-    /* 1. Blank the page — hide everything */
+    /* Reset body so no browser-default margins push content down */
+    body {
+      margin: 0 !important; padding: 0 !important;
+      background: white !important;
+      height: auto !important; min-height: 0 !important;
+      overflow: visible !important;
+    }
+
+    /* 1. Blank everything */
     body * { visibility: hidden !important; }
 
     /* 2. Reveal only the print content tree */
     body.is-printing .print-root,
     body.is-printing .print-root * { visibility: visible !important; }
 
-    /* 3. Pull print-root out of the overlay stacking context so it
-          flows normally and does NOT repeat on every page.
-          position:static is the critical fix — never use fixed/absolute here. */
+    /* 3. The overlay uses position:fixed + flex centering on screen.
+          Both must be fully neutralised or the flex centering creates
+          ~half-a-viewport of blank space above the content in print. */
     body.is-printing .overlay {
       position: static !important;
-      background: none !important;
-      backdrop-filter: none !important;
       display: block !important;
-      padding: 0 !important;
-      margin: 0 !important;
+      /* Kill flex centering */
+      align-items: unset !important;
+      justify-content: unset !important;
+      /* Kill all spacing */
+      top: 0 !important; left: 0 !important;
+      margin: 0 !important; padding: 0 !important;
+      width: 100% !important; height: auto !important;
+      min-height: 0 !important; max-height: none !important;
+      background: none !important; backdrop-filter: none !important;
+      transform: none !important; overflow: visible !important;
     }
+
+    /* 4. Print panel: static flow, no shadow/radius/max-height */
     body.is-printing .print-root {
       position: static !important;
       display: block !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      max-height: none !important;
-      height: auto !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border-radius: 0 !important;
-      box-shadow: none !important;
-      border: none !important;
-      background: #fff !important;
-      background-image: none !important;
+      top: 0 !important; left: 0 !important;
+      transform: none !important;
+      width: 100% !important; max-width: 100% !important;
+      height: auto !important; max-height: none !important; min-height: 0 !important;
+      margin: 0 !important; padding: 0 !important;
+      border-radius: 0 !important; box-shadow: none !important; border: none !important;
+      background: #fff !important; background-image: none !important;
       overflow: visible !important;
     }
 
-    /* 4. Hide buttons, toast, install banner, and any other fixed chrome */
+    /* 5. Hide buttons, toast, install banner */
     body.is-printing .print-actions,
     .toast, .install-banner { display: none !important; visibility: hidden !important; }
 
-    /* 5. Neutralise every fixed/absolute element in the app so none
-          bleeds through onto subsequent print pages */
+    /* 6. Kill decorative pseudo-elements that are position:absolute/fixed */
     .header::before, .header-glow, .header-gold-bar,
     .btn-generate::before, .btn-create-tasks::before { display: none !important; }
 
-    /* 6. Typography */
-    .print-hd h2 { font-size: 18pt !important; }
-    .print-hd p  { font-size: 10pt !important; }
+    /* 7. Typography */
+    .print-hd h2    { font-size: 18pt !important; }
+    .print-hd p     { font-size: 10pt !important; }
     .print-section h3 { font-size: 13pt !important; }
-    .print-task   { font-size: 11pt !important; }
+    .print-task     { font-size: 11pt !important; }
     .print-shop-item { font-size: 11pt !important; }
 
-    /* 7. Page-break control — both prefixed (Safari) and unprefixed (Chrome) */
+    /* 8. Page-break control — prefixed (Safari) + unprefixed (Chrome) */
     .print-task, .print-meal, .print-shop-item {
       break-inside: avoid; -webkit-column-break-inside: avoid; page-break-inside: avoid;
     }
     .print-section {
       break-inside: avoid; -webkit-column-break-inside: avoid; page-break-inside: avoid;
     }
-    .print-section h3 {
-      break-after: avoid; page-break-after: avoid;
-    }
+    .print-section h3 { break-after: avoid; page-break-after: avoid; }
 
-    /* 8. Preserve teal for colour printers; degrades to dark on B&W */
-    .print-task::before      { color: #1e6e69 !important; }
-    .print-shop-item::before { color: #1e6e69 !important; }
-    .print-meal-day          { color: #1e6e69 !important; }
+    /* 9. Teal preserved for colour printers */
+    .print-task::before       { color: #1e6e69 !important; }
+    .print-shop-item::before  { color: #1e6e69 !important; }
+    .print-meal-day           { color: #1e6e69 !important; }
     .print-meal-details-label { color: #1e6e69 !important; }
 
-    /* 9. Two-column shopping grid and ingredient list work on paper */
+    /* 10. Multi-column layouts */
     .print-shop-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; }
     .print-meal-ing  { columns: 2 !important; }
   }
