@@ -633,6 +633,17 @@ const STYLES = `
   .tag-select { font-family: 'DM Sans', sans-serif; font-size: 11px; border: 1px solid var(--border); border-radius: 4px; padding: 2px 5px; color: var(--ink-soft); background: #fff; cursor: pointer; outline: none; }
   .task-del { background: none; border: none; cursor: pointer; color: var(--ink-faint); font-size: 16px; padding: 0 3px; transition: color 0.15s; flex-shrink: 0; }
   .task-del:hover { color: var(--red); }
+  .task-note-btn { background: none; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 11px; padding: 2px 6px; color: var(--ink-faint); flex-shrink: 0; transition: all 0.15s; line-height: 1.4; }
+  .task-note-btn:hover { border-color: var(--teal-light); color: var(--teal-dark); }
+  .task-note-btn.has-note { border-color: var(--teal-light); color: var(--teal-dark); background: var(--teal-faint); }
+  .task-note-text { font-size: 12px; color: var(--ink-soft); font-style: italic; margin-top: 2px; line-height: 1.45; }
+  .task-note-editor { padding: 8px 14px 10px 42px; border-top: 1px dashed var(--border-soft); background: var(--teal-faint); }
+  .task-note-textarea { width: 100%; border: 1px solid var(--teal-light); border-radius: var(--radius-sm); padding: 7px 10px; font-family: 'DM Sans', sans-serif; font-size: 12.5px; color: var(--ink); outline: none; resize: vertical; min-height: 56px; box-sizing: border-box; background: #fff; line-height: 1.5; }
+  .task-note-textarea:focus { border-color: var(--teal-mid); }
+  .task-note-actions { display: flex; gap: 7px; margin-top: 6px; }
+  .task-note-save { background: var(--teal-mid); border: none; border-radius: var(--radius-sm); padding: 5px 13px; font-family: 'DM Sans', sans-serif; font-size: 12px; color: #fff; cursor: pointer; }
+  .task-note-save:hover { filter: brightness(1.08); }
+  .task-note-cancel { background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 10px; font-family: 'DM Sans', sans-serif; font-size: 12px; color: var(--ink-soft); cursor: pointer; }
   .add-row { padding: 9px 14px; display: flex; align-items: center; gap: 9px; border-top: 1px dashed var(--border); }
   .add-input { flex: 1; border: none; background: transparent; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); outline: none; }
   .add-input::placeholder { color: var(--ink-faint); }
@@ -898,6 +909,8 @@ export default function HouseHelper() {
   const [addingMeal, setAddingMeal]   = useState(false);
   const [refreshingShop, setRefreshingShop] = useState(false);
   const [newTask, setNewTask]         = useState("");
+  const [editingTaskNote, setEditingTaskNote] = useState(null);
+  const [taskNoteText, setTaskNoteText]       = useState("");
   const [toast, setToast]             = useState("");
 
   // Panel state
@@ -1078,6 +1091,16 @@ Rules:
   const toggleTask  = (id) => setTasks(ts => ts.map(t => t.id===id ? {...t,done:!t.done} : t));
   const deleteTask  = (id) => setTasks(ts => ts.filter(t => t.id!==id));
   const changeTag   = (id, tag) => setTasks(ts => ts.map(t => t.id===id ? {...t,tag} : t));
+  const openNoteEditor = (task) => {
+    setEditingTaskNote(task.id);
+    setTaskNoteText(task.notes || "");
+  };
+  const saveTaskNote = (id) => {
+    setTasks(ts => ts.map(t => t.id===id ? {...t, notes: taskNoteText.trim()} : t));
+    setEditingTaskNote(null);
+    setTaskNoteText("");
+  };
+  const cancelNoteEditor = () => { setEditingTaskNote(null); setTaskNoteText(""); };
   const addTask = () => {
     if (!newTask.trim()) return;
     setTasks(ts => [...ts, { id: Date.now().toString(), text: newTask.trim(), tag:"routine", done:false }]);
@@ -1108,7 +1131,15 @@ Rules:
   };
   const loadTemplate = (tmpl) => {
     const existing = tasks.map(t=>t.text.toLowerCase());
-    const toAdd = tmpl.tasks.filter(t=>!existing.includes(t.toLowerCase())).map(text => ({ id:Date.now().toString()+Math.random(), text, tag:"routine", done:false }));
+    const toAdd = tmpl.tasks
+      .filter(t => {
+        const text = typeof t === "string" ? t : t.text;
+        return !existing.includes(text.toLowerCase());
+      })
+      .map(t => {
+        const isObj = typeof t === "object" && t !== null;
+        return { id: Date.now().toString()+Math.random(), text: isObj ? t.text : t, tag: isObj ? (t.tag||"routine") : "routine", done: false, notes: isObj ? (t.notes||"") : "" };
+      });
     setTasks(ts => [...ts, ...toAdd]);
     showToast(`Loaded "${tmpl.name}" — ${toAdd.length} tasks added`);
     setShowTaskPanel(false);
@@ -1116,7 +1147,7 @@ Rules:
   const saveAsTemplate = () => {
     if (!newTmplName.trim()) { showToast("Enter a name first"); return; }
     if (!tasks.length) { showToast("No tasks to save"); return; }
-    setTemplates(ts => [...ts, { id:Date.now().toString(), name:newTmplName.trim(), tasks:tasks.map(t=>t.text) }]);
+    setTemplates(ts => [...ts, { id:Date.now().toString(), name:newTmplName.trim(), tasks:tasks.map(t=>({text:t.text, tag:t.tag, notes:t.notes||""})) }]);
     setNewTmplName("");
     showToast("Template saved");
   };
@@ -1145,7 +1176,7 @@ Rules:
     const toAdd = TASK_LIBRARY
       .flatMap(c => c.tasks)
       .filter(t => selectedLibraryTasks[t.id] && !existing.includes(t.text.toLowerCase()))
-      .map(t => ({ id: Date.now().toString() + Math.random(), text: t.text, tag: "routine", done: false }));
+      .map(t => ({ id: Date.now().toString() + Math.random(), text: t.text, tag: "routine", done: false, notes: "" }));
     setTasks(ts => [...ts, ...toAdd]);
     setShowTaskLibrary(false);
     setSelectedLibraryTasks({});
@@ -1260,6 +1291,15 @@ Rules:
           const lines = doc.splitTextToSize(taskLabel, contentW - 22);
           doc.text(lines, margin + 18, y + 10);
           y += lines.length * 14 + 7;
+          if (task.notes) {
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(9.5);
+            doc.setTextColor(100, 120, 118);
+            const noteLines = doc.splitTextToSize(`→ Special instructions: ${task.notes}`, contentW - 30);
+            doc.text(noteLines, margin + 26, y);
+            y += noteLines.length * 12 + 4;
+            doc.setTextColor(26, 46, 43);
+          }
         });
         y += 12;
       }
@@ -1841,17 +1881,43 @@ Rules: detailedIngredients must include exact quantities. instructions must have
               {tasks.length > 0 && (
                 <div className="card">
                   {tasks.map(task => (
-                    <div className="task-row" key={task.id}>
-                      <div className={`task-check ${task.done?"done":""}`} onClick={() => toggleTask(task.id)}>
-                        {task.done && <span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}
+                    <div key={task.id}>
+                      <div className="task-row">
+                        <div className={`task-check ${task.done?"done":""}`} onClick={() => toggleTask(task.id)}>
+                          {task.done && <span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}
+                        </div>
+                        <div style={{flex:1, minWidth:0}}>
+                          <span className={`task-text ${task.done?"done":""}`}>{task.text}</span>
+                          {task.notes && <div className="task-note-text">{task.notes}</div>}
+                        </div>
+                        <button
+                          className={`task-note-btn${task.notes ? " has-note" : ""}`}
+                          onClick={() => editingTaskNote === task.id ? cancelNoteEditor() : openNoteEditor(task)}
+                          title={task.notes ? "Edit note" : "Add note"}
+                        >{task.notes ? "📝" : "+ Note"}</button>
+                        <select className="tag-select" value={task.tag} onChange={e => changeTag(task.id, e.target.value)}>
+                          <option value="routine">routine</option>
+                          <option value="priority">priority</option>
+                          <option value="seasonal">seasonal</option>
+                        </select>
+                        <button className="task-del" onClick={() => deleteTask(task.id)}>×</button>
                       </div>
-                      <span className={`task-text ${task.done?"done":""}`}>{task.text}</span>
-                      <select className="tag-select" value={task.tag} onChange={e => changeTag(task.id, e.target.value)}>
-                        <option value="routine">routine</option>
-                        <option value="priority">priority</option>
-                        <option value="seasonal">seasonal</option>
-                      </select>
-                      <button className="task-del" onClick={() => deleteTask(task.id)}>×</button>
+                      {editingTaskNote === task.id && (
+                        <div className="task-note-editor">
+                          <textarea
+                            className="task-note-textarea"
+                            placeholder="Add special instructions for this task…"
+                            value={taskNoteText}
+                            onChange={e => setTaskNoteText(e.target.value)}
+                            autoFocus
+                            onKeyDown={e => { if (e.key === "Escape") cancelNoteEditor(); }}
+                          />
+                          <div className="task-note-actions">
+                            <button className="task-note-save" onClick={() => saveTaskNote(task.id)}>Save Note</button>
+                            <button className="task-note-cancel" onClick={cancelNoteEditor}>Cancel</button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                   <div className="add-row">
@@ -2408,7 +2474,12 @@ Rules: detailedIngredients must include exact quantities. instructions must have
             {tasks.length > 0 && (
               <div className="print-section">
                 <h3>🧹 Tasks</h3>
-                {tasks.map(t => <div className="print-task" key={t.id}>{t.text}{t.tag!=="routine"?<span style={{fontSize:11,color:"var(--ink-faint)"}}> ({t.tag})</span>:""}</div>)}
+                {tasks.map(t => (
+                  <div key={t.id}>
+                    <div className="print-task">{t.text}{t.tag!=="routine"?<span style={{fontSize:11,color:"var(--ink-faint)"}}> ({t.tag})</span>:""}</div>
+                    {t.notes && <div style={{fontSize:11,color:"var(--ink-soft)",fontStyle:"italic",paddingLeft:22,marginBottom:2}}>→ Special instructions: {t.notes}</div>}
+                  </div>
+                ))}
               </div>
             )}
             {meals.length > 0 && (
