@@ -759,35 +759,78 @@ const STYLES = `
   /* ── Print media query ── */
   @media print {
     @page { margin: 2.5cm; size: portrait; }
-    /* Hide everything */
-    body * { visibility: hidden; }
-    /* Show only the print panel and all its descendants */
+
+    /* 1. Blank the page — hide everything */
+    body * { visibility: hidden !important; }
+
+    /* 2. Reveal only the print content tree */
     body.is-printing .print-root,
-    body.is-printing .print-root * { visibility: visible; }
-    /* Position the print panel to cover the page */
-    body.is-printing .print-root {
-      position: fixed; top: 0; left: 0; width: 100%; height: auto;
-      max-width: 100% !important; max-height: none !important;
-      border-radius: 0 !important; box-shadow: none !important;
-      background: #fff !important; overflow: visible !important;
-      padding: 0 !important; margin: 0 !important;
+    body.is-printing .print-root * { visibility: visible !important; }
+
+    /* 3. Pull print-root out of the overlay stacking context so it
+          flows normally and does NOT repeat on every page.
+          position:static is the critical fix — never use fixed/absolute here. */
+    body.is-printing .overlay {
+      position: static !important;
+      background: none !important;
+      backdrop-filter: none !important;
+      display: block !important;
+      padding: 0 !important;
+      margin: 0 !important;
     }
-    /* Hide the action buttons even though they're inside print-root */
-    body.is-printing .print-actions { visibility: hidden !important; height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; border: none !important; }
-    /* Typography */
-    .print-hd h2 { font-size: 18pt; }
-    .print-hd p { font-size: 10pt; }
-    .print-section h3 { font-size: 13pt; }
-    .print-task { font-size: 11pt; }
-    .print-shop-item { font-size: 11pt; }
-    /* Avoid mid-item page breaks */
-    .print-task, .print-meal, .print-shop-item { break-inside: avoid; page-break-inside: avoid; }
-    .print-section { break-inside: avoid; page-break-inside: avoid; }
-    /* Preserve teal colors for color printing */
-    .print-task::before { color: #1e6e69; }
-    .print-shop-item::before { color: #1e6e69; }
-    .print-meal-day { color: #1e6e69; }
-    .print-meal-details-label { color: #1e6e69; }
+    body.is-printing .print-root {
+      position: static !important;
+      display: block !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      max-height: none !important;
+      height: auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      border: none !important;
+      background: #fff !important;
+      background-image: none !important;
+      overflow: visible !important;
+    }
+
+    /* 4. Hide buttons, toast, install banner, and any other fixed chrome */
+    body.is-printing .print-actions,
+    .toast, .install-banner { display: none !important; visibility: hidden !important; }
+
+    /* 5. Neutralise every fixed/absolute element in the app so none
+          bleeds through onto subsequent print pages */
+    .header::before, .header-glow, .header-gold-bar,
+    .btn-generate::before, .btn-create-tasks::before { display: none !important; }
+
+    /* 6. Typography */
+    .print-hd h2 { font-size: 18pt !important; }
+    .print-hd p  { font-size: 10pt !important; }
+    .print-section h3 { font-size: 13pt !important; }
+    .print-task   { font-size: 11pt !important; }
+    .print-shop-item { font-size: 11pt !important; }
+
+    /* 7. Page-break control — both prefixed (Safari) and unprefixed (Chrome) */
+    .print-task, .print-meal, .print-shop-item {
+      break-inside: avoid; -webkit-column-break-inside: avoid; page-break-inside: avoid;
+    }
+    .print-section {
+      break-inside: avoid; -webkit-column-break-inside: avoid; page-break-inside: avoid;
+    }
+    .print-section h3 {
+      break-after: avoid; page-break-after: avoid;
+    }
+
+    /* 8. Preserve teal for colour printers; degrades to dark on B&W */
+    .print-task::before      { color: #1e6e69 !important; }
+    .print-shop-item::before { color: #1e6e69 !important; }
+    .print-meal-day          { color: #1e6e69 !important; }
+    .print-meal-details-label { color: #1e6e69 !important; }
+
+    /* 9. Two-column shopping grid and ingredient list work on paper */
+    .print-shop-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; }
+    .print-meal-ing  { columns: 2 !important; }
   }
 
   /* ── Task Library Panel ── */
